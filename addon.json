@@ -1,0 +1,11 @@
+{
+	"title"		:	"Panic Ritual",
+	"type"		:	"gamemode",
+	"tags"		:	[ "fun", "roleplay" ],
+	"ignore"	:
+	[
+		"*.psd",
+		"*.vcproj",
+		"*.svn*"
+	]
+}

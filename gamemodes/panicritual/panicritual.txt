@@ -1,0 +1,13 @@
+"panicritual"
+{
+	"base"		"base"
+	"title"		"Panic Ritual"
+	"maps"		""
+	"menusystem"	"1"
+	
+		"settings"
+	{
+
+	}
+}
+
