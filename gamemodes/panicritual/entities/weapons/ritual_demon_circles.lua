@@ -51,11 +51,7 @@ end
 
 function SWEP:PrimaryAttack()
 	if SERVER then
-		local circle = ents.Create("ritual_circle")
-		circle:SetProgressRequirement(2)
-		circle:SetPos(self.Owner:GetPos())
-		circle:SetAngles(Angle(0,self.Owner:GetAngles().y,0))
-		circle:Spawn()
+		GAMEMODE:PlaceRitualCircle(self.Owner:GetPos(), Angle(0,self.Owner:GetAngles().y,0))
 	end
 end
 

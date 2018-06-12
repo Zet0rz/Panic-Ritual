@@ -23,8 +23,15 @@ function ENT:Initialize()
 	self:SetNotSolid(true)
 	self:SetModel(model)
 
+	local size = candledistance --candledistance*0.75
+	self:PhysicsInitSphere(size, "default_silent")
+	self:SetCollisionBounds(Vector(-size, -size, -size), Vector(size, size, size))
+
 	if SERVER then
+		self:SetTrigger(true)
+
 		self.CurrentProgress = 0
+		self.VisitedCircles = {}
 		self.Candles = {}
 
 		local ang = Angle(0, 360/(self.RequiredCharge + 1), 0)
@@ -49,10 +56,67 @@ if SERVER then
 	function ENT:SetDoll(doll)
 		self.Doll = doll -- Could be a weapon, could be a dropped entity
 	end
+
+	-- Spawn or respawn doll on this circle
+	function ENT:Reset()
+		if not IsValid(self.Doll) then
+			local doll = ents.Create("ritual_doll")
+			doll:SetRitualCircle(self)
+			self:SetDoll(doll)
+			doll:Spawn()
+		else
+			self.Doll:Reset(true)
+		end
+		
+		self.CurrentProgress = 0
+		self.VisitedCircles = {}
+	end
+
+	function ENT:StartTouch(ent)
+		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
+			local wep = caller:GetWeapon("ritual_human_doll")
+			if IsValid(wep) then
+				wep:StartDollCleanse(self)
+			end
+		end
+	end
+
+	function ENT:EndTouch(ent)
+		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
+			local wep = caller:GetWeapon("ritual_human_doll")
+			if IsValid(wep) then
+				wep:StopDollCleanse(self)
+			end
+		end
+	end
+
+	function ENT:Progress(circle)
+		if circle == self then
+			if self.CurrentProgress >= self.RequiredCharge then
+				self:Complete()
+			end
+		elseif self.CurrentProgress < self.RequiredCharge and not self.VisitedCircles[circle] then
+			self.CurrentProgress = self.CurrentProgress + 1
+			local candle = self.Candles[self.CurrentProgress]
+			if IsValid(candle) then candle:Complete() end
+			self.VisitedCircles[circle] = true
+		end
+	end
+
+	function ENT:Complete()
+		local candle = self.Candles[0]
+		if IsValid(candle) then candle:Complete() end
+
+		self.Doll:Reset(true)
+		self.Complete = true
+	end
 end
 
 if CLIENT then
-	
+	function ENT:Draw()
+		self:DrawModel()
+		--render.DrawSphere(self:GetPos(), candledistance, 100, 100, Color(255,255,255))
+	end
 end
 
 function ENT:Think()

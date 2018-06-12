@@ -1,4 +1,8 @@
 
+-- CONFIG VARIABLES
+local total_circles = 3 -- Demons place 3 circles
+local total_circle_charge = 2 -- Runners need to bring the doll past 2 other circles
+
 local function PickWeightedRandomPlayers(players, num)
 	local total = 0
 	for k,v in pairs(players) do
@@ -11,10 +15,11 @@ local function PickWeightedRandomPlayers(players, num)
 		local cur = 0
 		for k,v in pairs(players) do
 			if not picked[v] then
-				cur = cur + (v.DemonChance or 1)
-				if cur > ran then
+				local chance = (v.DemonChance or 1)
+				cur = cur + chance
+				if cur >= ran then
 					picked[v] = true
-					total = total - (v.DemonChance or 1)
+					total = total - chance
 					break
 				end
 			end
@@ -31,6 +36,9 @@ ROUND_POST = 3
 
 GM.RoundState = ROUND_INIT
 
+local numcircles = 0
+local circles = {}
+
 function GM:RestartRound()
 	self.RoundState = ROUND_INIT
 
@@ -41,6 +49,7 @@ function GM:RestartRound()
 
 	local maindemon
 	for k,v in pairs(players) do
+		v:StripWeapons()
 		if demons[v] then
 			v:SetDemon()
 			v:Spawn()
@@ -54,5 +63,32 @@ function GM:RestartRound()
 		end
 	end
 
+	numcircles = 0
+	circles = {}
 	self.RoundState = ROUND_PREPARE
+end
+
+local function StartMainPhase()
+	for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
+		v:StripWeapon("ritual_demon_circles")
+		v:Give("ritual_demon")
+	end
+
+	for k,v in pairs(circles) do
+		v:Reset()
+	end
+end
+
+function GM:PlaceRitualCircle(pos, ang)
+	local circle = ents.Create("ritual_circle")
+	circle:SetProgressRequirement(total_circle_charge <= 0 and total_circles + total_circle_charge or total_circle_charge)
+	circle:SetPos(pos)
+	circle:SetAngles(ang)
+	circle:Spawn()
+
+	numcircles = numcircles + 1
+	circles[numcircles] = circle
+	if numcircles >= total_circles then
+		StartMainPhase()
+	end
 end

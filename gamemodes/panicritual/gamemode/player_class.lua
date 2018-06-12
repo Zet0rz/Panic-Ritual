@@ -8,6 +8,10 @@ function PLAYER:SetupDataTables()
 
 end
 
+function PLAYER:Loadout()
+
+end
+
 player_manager.RegisterClass( "player_ritual_base", PLAYER, "player_default" )
 
 --DEFINE_BASECLASS( "player_ritual_base" )
