@@ -20,14 +20,15 @@ local model = "models/Gibs/HGIBS.mdl"
 local candledistance = 100 -- Distance from center to candle positions
 function ENT:Initialize()
 	self:SetMoveType(MOVETYPE_NONE)
-	self:SetNotSolid(true)
 	self:SetModel(model)
 
-	local size = candledistance --candledistance*0.75
-	self:PhysicsInitSphere(size, "default_silent")
-	self:SetCollisionBounds(Vector(-size, -size, -size), Vector(size, size, size))
+	self:SetNotSolid(true)
 
 	if SERVER then
+		local size = candledistance --candledistance*0.75
+		self:PhysicsInitSphere(size, "default_silent")
+		self:SetCollisionBounds(Vector(-size, -size, -size), Vector(size, size, size))
+
 		self:SetTrigger(true)
 
 		self.CurrentProgress = 0
@@ -73,18 +74,20 @@ if SERVER then
 	end
 
 	function ENT:StartTouch(ent)
-		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
-			local wep = caller:GetWeapon("ritual_human_doll")
-			if IsValid(wep) then
+		if IsValid(ent) and ent:IsPlayer() and ent:IsHuman() then
+			local wep = ent:GetWeapon("ritual_human")
+			if IsValid(wep) and wep:GetHasDoll() then
+				print("Starting cleanse")
 				wep:StartDollCleanse(self)
 			end
 		end
 	end
 
 	function ENT:EndTouch(ent)
-		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
-			local wep = caller:GetWeapon("ritual_human_doll")
-			if IsValid(wep) then
+		if IsValid(ent) and ent:IsPlayer() and ent:IsHuman() then
+			local wep = ent:GetWeapon("ritual_human")
+			if IsValid(wep) and wep:GetHasDoll() then
+				print("Stopping cleanse")
 				wep:StopDollCleanse(self)
 			end
 		end
@@ -93,10 +96,12 @@ if SERVER then
 	function ENT:Progress(circle)
 		if circle == self then
 			if self.CurrentProgress >= self.RequiredCharge then
+				print("Completed", self)
 				self:Complete()
 			end
 		elseif self.CurrentProgress < self.RequiredCharge and not self.VisitedCircles[circle] then
 			self.CurrentProgress = self.CurrentProgress + 1
+			print("Progressed", self, "to", self.CurrentProgress)
 			local candle = self.Candles[self.CurrentProgress]
 			if IsValid(candle) then candle:Complete() end
 			self.VisitedCircles[circle] = true
@@ -108,7 +113,7 @@ if SERVER then
 		if IsValid(candle) then candle:Complete() end
 
 		self.Doll:Reset(true)
-		self.Complete = true
+		self.IsComplete = true
 	end
 end
 

@@ -31,8 +31,8 @@ function ENT:Initialize()
 
 	if self:GetMoveType() ~= 0 then
 		local phys = self:GetPhysicsObject()
-		if IsValid(phys) then
-			--phys:Wake()
+		if SERVER and IsValid(phys) then
+			phys:Wake()
 		end
 	end
 end
@@ -65,11 +65,13 @@ if SERVER then
 	end
 
 	function ENT:Use(activator, caller)
-		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() and not caller:HasWeapon("ritual_human_doll") and not self.RitualCircle.Complete then
-			local wep = caller:Give("ritual_human_doll")
-			wep:TransferDollData(self)
-			self.RitualCircle:SetDoll(wep)
-			self:Remove()
+		if not self.RitualCircle.IsComplete and IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
+			local wep = caller:GetWeapon("ritual_human")
+			if IsValid(wep) and not wep:GetHasDoll() then
+				wep:PickupDoll(self)
+				self.RitualCircle:SetDoll(wep)
+				self:Remove()
+			end
 		end
 	end
 end

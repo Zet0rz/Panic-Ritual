@@ -22,7 +22,7 @@ SWEP.Instructions	= "Left Click to place Ritual Circle!"
 
 SWEP.HoldType = "melee"
 
-SWEP.ViewModel	= "models/weapons/c_crowbar.mdl"
+SWEP.ViewModel	= "models/weapons/c_ritual_human.mdl"
 SWEP.WorldModel	= "models/weapons/w_crowbar.mdl"
 SWEP.UseHands = true
 SWEP.vModel = true

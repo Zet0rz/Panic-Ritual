@@ -19,7 +19,7 @@
 	OBJECTIVE
 	*	Ritual Circle
 		✓	Entity
-		?	Light Candles/Progress indicators
+		*	Light Candles/Progress indicators
 		-	Completion indicator
 		?	Variable required total number of circles
 	*	Dolls
@@ -27,10 +27,11 @@
 		-	Evil Rate
 		✓	Weapon
 			-	Burning eye effect
-		?	Progress checking
-		?	Completion
+		✓	Progress checking
+		✓	Completion
 		?	Variable required total number of circles to run past
 			?	Support '-X' to mean "all except X"
+		-	Better model?
 	-	Win Condition
 		?	Variable required completion number
 		-	Light weapon
@@ -42,12 +43,18 @@
 	-	Model (Hooded demon? BO3 Zombies Keeper?)
 	-	Weapon
 	-	Invisibility ability?
-	*	Ritual Circle placement (New weapon or same weapon? Or no weapon at all?)
+	✓	Ritual Circle placement (New weapon or same weapon? Or no weapon at all?)
+		-	Space checking
+		-	Distance condition?
+		-	Handling of multiple demons (all place or just one? Vote? Place one each?)
 	-	Evil Rate sensing
 
 	HUMANS
 	*	Models (Human models. Randomly colored or all blue?)
 	*	Weapon (No-doll. Maybe merged with doll?)
+		✓	Logic
+		-	Model/Viewmodel
+		-	Worldmodel (draw doll in hand)
 	-	Evil Rate influence (fade)
 	-	Corner peeking
 

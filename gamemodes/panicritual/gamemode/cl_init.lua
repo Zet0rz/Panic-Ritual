@@ -1,5 +1,11 @@
 include( "shared.lua" )
 
+-- Sound effects used by the gamemode
+util.PrecacheSound("sound/ambient/fire/mtov_flame2.wav") -- Reset doll burn
+util.PrecacheSound("sound/ambient/creatures/town_scared_breathing1.wav") -- Doll whisper
+util.PrecacheSound("sound/ambient/creatures/town_scared_breathing2.wav") -- Doll whisper 2 (shorter)
+
+
 local ccNight = {
 	["$pp_colour_addr"] = 0,
 	["$pp_colour_addg"] = 0,

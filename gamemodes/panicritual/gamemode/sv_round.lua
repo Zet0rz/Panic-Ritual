@@ -51,14 +51,13 @@ function GM:RestartRound()
 	for k,v in pairs(players) do
 		v:StripWeapons()
 		if demons[v] then
-			v:SetDemon()
 			v:Spawn()
+			v:SetDemon()
 			v:Give("ritual_demon_circles")
 			v.DemonChance = 1
 		else
-			v:SetHuman()
 			v:Spawn()
-			v:Give("ritual_human")
+			v:SetHuman()
 			v.DemonChance = v.DemonChance and v.DemonChance + 1 or 1
 		end
 	end
