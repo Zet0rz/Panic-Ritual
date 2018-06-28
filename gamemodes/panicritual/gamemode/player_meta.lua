@@ -44,7 +44,7 @@ function PLAYER:VisibleTo(ply)
 		filter = ply,
 	})
 
-	return tr.Hit and tr.Entity == self
+	return tr.Hit and tr.Entity == self, tr
 end
 
 function PLAYER:CanSee(ply)
