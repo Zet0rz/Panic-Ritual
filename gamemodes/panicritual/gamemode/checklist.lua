@@ -32,6 +32,7 @@
 		?	Variable required total number of circles to run past
 			?	Support '-X' to mean "all except X"
 		-	Better model?
+		✓	Cleanse time
 	-	Win Condition
 		?	Variable required completion number
 		-	Light weapon
@@ -57,6 +58,7 @@
 		-	Worldmodel (draw doll in hand)
 	-	Evil Rate influence (fade)
 	-	Corner peeking
+	*	Jumpscares
 
 
 	

@@ -1,4 +1,6 @@
 include( "shared.lua" )
+include( "cl_jumpscares.lua" )
+include( "player_meta.lua" )
 
 -- Sound effects used by the gamemode
 util.PrecacheSound("sound/ambient/fire/mtov_flame2.wav") -- Reset doll burn

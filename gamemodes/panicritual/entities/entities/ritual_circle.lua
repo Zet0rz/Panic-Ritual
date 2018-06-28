@@ -108,6 +108,15 @@ if SERVER then
 		end
 	end
 
+	function ENT:AllowCleanse(doll)
+		local circle = doll.RitualCircle
+		return (circle.CurrentProgress >= circle.RequiredCharge) == (circle == self) and not circle:HasCompletedCircle(self)
+	end
+
+	function ENT:HasCompletedCircle(circle)
+		return self.VisitedCircles[circle] or false
+	end
+
 	function ENT:Complete()
 		local candle = self.Candles[0]
 		if IsValid(candle) then candle:Complete() end

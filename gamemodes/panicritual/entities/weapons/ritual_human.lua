@@ -34,6 +34,8 @@ SWEP.Secondary.DefaultClip	= -1
 SWEP.Secondary.Automatic	= false
 SWEP.Secondary.Ammo			= "none"
 
+local cleansetime = 3
+
 function SWEP:SetupDataTables()
 	self:NetworkVar("Bool", 0, "HasDoll")
 
@@ -58,6 +60,37 @@ local function UpdateAnimations(self)
 end
 
 if SERVER then
+	util.AddNetworkString("ritual_doll_cleanse")
+
+	function SWEP:PlayActAndWait(act, cycle)
+		local vm = self.Owner:GetViewModel()
+		local seq = vm:SelectWeightedSequence(act)
+		local len = vm:SequenceDuration(seq)
+
+		vm:SetSequence(seq)
+		if cycle then
+			vm:SetCycle(cycle)
+			len = len * (1 - cycle)
+		end
+		self.NextIdleTime = CurTime() + len
+
+		return len
+	end
+
+	function SWEP:PlaySequenceAndWait(seq, cycle)
+		local vm = self.Owner:GetViewModel()
+		local id, dur = vm:LookupSequence(seq)
+
+		vm:SetSequence(id)
+		if cycle then
+			vm:SetCycle(cycle)
+			len = len * (1 - cycle)
+		end
+		self.NextIdleTime = CurTime() + dur
+
+		return dur
+	end
+
 	function SWEP:SetRitualCircle(circle)
 		self.RitualCircle = circle
 	end
@@ -65,6 +98,7 @@ if SERVER then
 	function SWEP:PickupDoll(doll)
 		self:SetRitualCircle(doll.RitualCircle)
 		self:SetHasDoll(true)
+		self:PlayActAndWait(ACT_VM_DEPLOY)
 		UpdateAnimations(self)
 	end
 
@@ -81,7 +115,9 @@ if SERVER then
 		doll:Reset(fromcircle)
 
 		self:SetHasDoll(false)
-		self:StopDollCleanse()
+		self.Cleansing = nil
+		self:PlayActAndWait(ACT_VM_UNDEPLOY, 0.2)
+		UpdateAnimations(self)
 	end
 
 	function SWEP:Drop() -- Drop this as a doll entity!
@@ -98,43 +134,88 @@ if SERVER then
 	end
 
 	function SWEP:StartDollCleanse(circle)
-		self:CompleteCircle(circle)
-		-- Later replace this with some short timed sequence?
+		if not circle:AllowCleanse(self) then return end
+
+		self.Cleansing = circle
+		self.InCleanseLoop = false
+
+		local ct = CurTime()
+
+		local time = self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_IN)
+		self.CleanseLoop = ct + time
+
+		self.CleanseFinish = ct + cleansetime
+
+		--[[net.Start("ritual_doll_cleanse")
+			net.WriteBool(true)
+		net.Send(self.Owner)]]
 	end
 
 	function SWEP:StopDollCleanse(circle)
-		
+		if not circle:AllowCleanse(self) then return end
+
+		self.Cleansing = nil
+		self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT)
 	end
 
 	function SWEP:CompleteCircle(circle)
+		self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT)
+		self.Cleansing = nil
 		self.RitualCircle:Progress(circle)
 	end
-else
 
+	function SWEP:Think()
+		local ct = CurTime()
+
+		if self.NextIdleTime and not self.Cleansing and ct > self.NextIdleTime then
+			self:SendWeaponAnim(self.NextIdleAct or ACT_VM_IDLE)
+			self.NextIdleTime = nil
+		end
+
+		if self.Owner:KeyDown(IN_FORWARD) then
+			local vel = self.Owner:GetVelocity():Length2D()
+			if self.Owner:KeyDown(IN_SPEED) and vel > 100 then
+				if not self.Sprinting then
+					self.Sprinting = true
+					UpdateAnimations(self)
+				end
+			elseif self.Sprinting then
+				self.Sprinting = false
+				UpdateAnimations(self)
+			end
+		end
+
+		if self.Cleansing then
+			if not self.InCleanseLoop then
+				if ct > self.CleanseLoop then
+					self:SendWeaponAnim(ACT_VM_DEPLOYED_LIFTED_IDLE)
+					self.InCleanseLoop = true
+				end
+			else
+				local pct = (ct - self.CleanseLoop)/cleansetime
+				local vm = self.Owner:GetViewModel()
+				vm:SetPoseParameter("doll_cleanse", pct)
+				if ct > self.CleanseFinish then
+					self:CompleteCircle(self.Cleansing)
+				end
+			end
+		end
+	end
+end
+
+if CLIENT then
+	local cleanseloop
+	net.Receive("ritual_doll_cleanse", function()
+		local b = net.ReadBool()
+	end)
+
+	function SWEP:Think()
+		local ct = CurTime()
+
+		
+	end
 end
 
 function SWEP:PrimaryAttack()
 	-- Drop it here?
-end
-
-function SWEP:Think()
-	local ct = CurTime()
-
-	if self.NextIdleTime and ct > self.NextIdleTime then
-		self:SendWeaponAnim(self.NextIdleAct or ACT_VM_IDLE)
-		self.NextIdleTime = nil
-	end
-
-	if self.Owner:KeyDown(IN_FORWARD) then
-		local vel = self.Owner:GetVelocity():Length2D()
-		if self.Owner:KeyDown(IN_SPEED) and vel > 100 then
-			if not self.Sprinting then
-				self.Sprinting = true
-				UpdateAnimations(self)
-			end
-		elseif self.Sprinting then
-			self.Sprinting = false
-			UpdateAnimations(self)
-		end
-	end
 end

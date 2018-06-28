@@ -1,10 +1,12 @@
 AddCSLuaFile("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("player_class.lua")
+AddCSLuaFile("cl_jumpscares.lua")
+AddCSLuaFile("player_meta.lua")
 
 include("shared.lua")
 include("player_class.lua")
-include("sv_player.lua")
+include("player_meta.lua")
 include("sv_round.lua")
 
 function GM:PlayerInitialSpawn(ply)
