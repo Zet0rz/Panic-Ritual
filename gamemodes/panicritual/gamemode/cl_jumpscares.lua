@@ -48,8 +48,8 @@ addjumpscaregroup(150, {
 -- Result: Player can only be scared once, however a second demon can double-scare if he is closer than Intensity Immunity
 -- Alternative: Only per-player immunity? Second demon can always double scare?
 
-local LocationForgetTime = 5 -- The amount of time of not having seen a demon to "forget" his location
-local DoubleScareDistance = function(x) return x > 100 and 0 or x/3 end -- How close the same demon has to be to double-scare
+local LocationForgetTime = 3 -- The amount of time of not having seen a demon to "forget" his location
+local DoubleScareDistance = function(x) return x < 100 and 0 or x/3 end -- How close the same demon has to be to double-scare
 local ScareResetTime = 15 -- The time until scares completely reset distance-wise
 
 --[[-------------------------------------------------------------------------
@@ -60,7 +60,7 @@ local ScareResetTime = 15 -- The time until scares completely reset distance-wis
 				More efficient, but awkward 5-second initial scares
 ---------------------------------------------------------------------------]]
 
-local scares = {}
+--[[local scares = {}
 hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 	local ct = CurTime()
 
@@ -68,7 +68,7 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 	if lp:IsHuman() and ply:IsDemon() then
 		local vis, tr = ply:VisibleTo(lp)
 		if vis then
-			if not scares[ply] or scares[ply].reset < ct then
+			if not scares[ply] or (scares[ply].reset and scares[ply].reset < ct) then
 				scares[ply] = {next = 0}
 			end
 
@@ -83,8 +83,8 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 					if index then
 						local sounds = jumpscares.sounds[index]
 						surface.PlaySound(sounds[math.random(#sounds)])
-						scares[ply].reset = ct + ScareResetTime
 						scares[ply].double = DoubleScareDistance(dist)
+						scares[ply].reset = ct + ScareResetTime
 					end
 				end
 			end
@@ -92,7 +92,7 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 			scares[ply].next = ct + LocationForgetTime
 		end
 	end
-end)
+end)]]
 
 --[[-------------------------------------------------------------------------
 	VERSION 2:	Scares are constantly calculated by distance
@@ -103,7 +103,7 @@ end)
 				Constant distance calculation, but better gameplay-wise
 ---------------------------------------------------------------------------]]
 
---[[local scares = {}
+local scares = {}
 hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 	local lp = LocalPlayer()
 	if lp:IsHuman() and ply:IsDemon() then
@@ -112,11 +112,11 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 			local ct = CurTime()
 			local dist = ply:GetPos():Distance(lp:GetPos())
 
-			if not scares[ply] or scares[ply].reset < ct then
+			if not scares[ply] or (scares[ply].reset and scares[ply].reset < ct) then
 				scares[ply] = {next = math.huge}
 			end
 
-			if scares[ply].next < dist then
+			if scares[ply].next > dist then
 				local index
 				for k,v in ipairs(jumpscares.distances) do
 					if v > dist then index = k break end
@@ -124,11 +124,11 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 				if index then
 					local sounds = jumpscares.sounds[index]
 					surface.PlaySound(sounds[math.random(#sounds)])
-					scares[ply].reset = ct + ScareResetTime
 				end
 			end
 
+			scares[ply].reset = ct + ScareResetTime
 			scares[ply].next = DoubleScareDistance(dist)
 		end
 	end
-end)]]
+end)
