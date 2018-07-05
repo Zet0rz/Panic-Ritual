@@ -1,10 +1,12 @@
-include( "shared.lua" )
-include( "cl_jumpscares.lua" )
-include( "player_meta.lua" )
+include("shared.lua" )
+include("cl_jumpscares.lua")
+include("player_meta.lua")
 include("animations.lua")
+include("antistuck.lua")
 
 --include("demonmaul.lua")
-include("demonsoulsiphon.lua")
+--include("demonsoulsiphon.lua")
+--include("demonpossess.lua")
 
 -- Sound effects used by the gamemode
 util.PrecacheSound("sound/ambient/fire/mtov_flame2.wav") -- Reset doll burn

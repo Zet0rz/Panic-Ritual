@@ -48,6 +48,7 @@ end
 
 function SWEP:Initialize()
 	self.Owner.NextLeap = 0
+	self:SetHoldType(self.HoldType)
 end
 
 function SWEP:Deploy()
@@ -115,6 +116,7 @@ function SWEP:OnRemove()
 	
 end
 
+--[[
 -- Soul siphon
 function SWEP:SecondaryAttack()
 	if SERVER and self.Owner.NextLeap and CurTime() > self.Owner.NextLeap then
@@ -135,6 +137,25 @@ function SWEP:Think()
 				self.Owner.NextLeap = nil
 				self.Owner.LeapCharging = nil
 				self.Owner:SetLeapCharging(false)
+			end
+		end
+		if self.TargetSeek and self.TargetSeekTime then
+			if CurTime() > self.TargetSeekTime then
+				self.Owner:SetFading(false)
+
+				local t = util.TraceHull({
+					start = self.Owner:GetShootPos(),
+					endpos = self.Owner:GetShootPos() + (self.Owner:GetAimVector()*10),
+					filter = self.Owner,
+					mins = Vector(-10, -10, -10),
+					maxs = Vector(10, 10, 10)
+				})
+
+				if IsValid(t.Entity) and t.Entity == self.TargetSeek then
+					self.Owner:SiphonGrab(t.Entity)
+				end
+				self.TargetSeek = nil
+				player_manager.RunClass(self.Owner, "ApplyMoveSpeeds")
 			end
 		end
 	end
@@ -158,12 +179,20 @@ function SWEP:SeekLeapTarget()
 	end
 end
 
+local seektime = 0.5
+local speed = 600
 function SWEP:AttackTarget(ply)
-	self.Owner:SiphonGrab(ply)
+	self.TargetSeek = ply
+	self.TargetSeekTime = CurTime() + seektime
+	self.Owner:SetFading(true)
+
+	self.Owner:SetWalkSpeed(speed)
+	self.Owner:SetRunSpeed(speed)
 end
 
 function SWEP:PrimaryAttack()
 	if SERVER then
 		self:SeekLeapTarget()
 	end
-end
+end]]
+

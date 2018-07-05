@@ -12,6 +12,11 @@ function PLAYER:Loadout()
 
 end
 
+function PLAYER:ApplyMoveSpeeds()
+	self.Player:SetWalkSpeed(self.WalkSpeed)
+	self.Player:SetRunSpeed(self.RunSpeed)
+end
+
 --[[function PLAYER:CalcView(view)
 	local ply = self.Player
 	if IsValid(ply:GetMauling()) then
@@ -53,16 +58,23 @@ function HUMANS:Init()
 	self.Player:SetModel(humans[math.random(#humans)])
 end
 
+function HUMANS:ApplyMoveSpeeds()
+	self.Player:SetWalkSpeed(self.WalkSpeed)
+	self.Player:SetRunSpeed(self.RunSpeed)
+end
+
 player_manager.RegisterClass( "player_ritual_human", HUMANS, "player_ritual_base" )
 
 local DEMONS = {}
+DEMONS.WalkSpeed 			= 200
+DEMONS.RunSpeed				= 400
+
 function DEMONS:SetupDataTables()
-	self.Player:NetworkVar("Entity", 0, "Mauling")
-	self.Player:NetworkVar("Bool", 0, "LeapCharging")
+	
 end
 
 function DEMONS:Loadout()
-	self.Player:Give("ritual_demon")
+	self.Player:Give("ritual_demon_possess")
 end
 
 local demonmodel = "models/player/group01/male_09.mdl" -- Replace this
@@ -70,18 +82,9 @@ function DEMONS:Init()
 	self.Player:SetModel(demonmodel)
 end
 
-function DEMONS:Move(mv)
-	local ply = self.Player
-
-	--[[if ply:GetLeapCharging() then
-		print("Charging")
-		local vel = mv:GetVelocity()
-		mv:SetVelocity(vel*0.75)
-	end]]
-
-	if SERVER and ply:IsOnGround() and not ply.NextLeap then
-		ply.NextLeap = CurTime() + 1
-	end
+function DEMONS:ApplyMoveSpeeds()
+	self.Player:SetWalkSpeed(self.WalkSpeed)
+	self.Player:SetRunSpeed(self.RunSpeed)
 end
 
 player_manager.RegisterClass( "player_ritual_demon", DEMONS, "player_ritual_base" )

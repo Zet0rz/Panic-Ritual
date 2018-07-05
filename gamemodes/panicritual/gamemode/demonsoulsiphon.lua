@@ -8,9 +8,18 @@ function PLAYER:GetSiphoned()
 	return self:GetNW2Entity("Ritual_SiphonInflictor")
 end
 
+function PLAYER:GetFading()
+	return self:GetNW2Bool("Ritual_Fading")
+end
+
+function PLAYER:SetFading(b)
+	return self:SetNW2Bool("Ritual_Fading", b)
+end
+
+local siphondist = 5
 if SERVER then
 	function PLAYER:SiphonGrab(target)
-		--print("Siphoning!", target)
+
 
 		self:SetNW2Entity("Ritual_SiphonTarget", target)
 		target:SetNW2Entity("Ritual_SiphonInflictor", self)
@@ -41,45 +50,49 @@ hook.Add("CalcMainActivity", "Ritual_DemonMaul", function(ply, vel)
 end)
 
 hook.Add("UpdateAnimation", "Ritual_SiphonAnim", function(ply, vel, groundspeed)
-	local p = ply:GetSiphoned()
-	local iv = IsValid(p)
+	if not ply:GetFading() then
+		local p = ply:GetSiphoned()
+		local iv = IsValid(p) and not p:GetFading()
 
-	if ply.SiphonAnimation ~= iv then
-		ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, ply:LookupSequence(siphonedseq), ply.SiphonAnimation and 1 or 0, ply.SiphonAnimation)
-		ply.SiphonAnimation = iv
-
-		if iv then
-			local e1 = p:GetAttachment(p:LookupAttachment("eyes"))
-			local e2 = ply:GetAttachment(ply:LookupAttachment("eyes"))
-
-			local ang = (e1.Pos - e2.Pos):Angle()
-			ang.pitch = 10
-			ply:SetEyeAngles(ang)
-		end
-
-		if CLIENT then
-			ply:ManipulateBoneAngles(ply:LookupBone("ValveBiped.Bip01_Head1"), Angle(0,iv and 50 or 0,0))
-		end
-	elseif not iv then
-		p = ply:GetSiphoning()
-		iv = IsValid(p)
-
-		if ply.SiphonArms ~= iv then
-			ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, ply:LookupSequence(siphonseq), ply.SiphonArms and 1 or 0, ply.SiphonArms)
-			ply.SiphonArms = iv
+		if ply.SiphonAnimation ~= iv then
+			ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, ply:LookupSequence(siphonedseq), ply.SiphonAnimation and 1 or 0, ply.SiphonAnimation)
+			ply.SiphonAnimation = iv
 
 			if iv then
-				local ang = (p:GetPos() - ply:GetPos()):Angle()
+				local e1 = p:GetAttachment(p:LookupAttachment("eyes"))
+				local e2 = ply:GetAttachment(ply:LookupAttachment("eyes"))
+
+				local ang = (e1.Pos - e2.Pos):Angle()
 				ang.pitch = 10
 				ply:SetEyeAngles(ang)
 			end
 
 			if CLIENT then
-				--print("Updating arms for", ply)
-				ply.SiphonArmFade = CurTime()
-				if iv then ply.SiphonArmDistance = p:GetPos():Distance(ply:GetPos()) - 30 end
+				ply:ManipulateBoneAngles(ply:LookupBone("ValveBiped.Bip01_Head1"), Angle(0,iv and 50 or 0,0))
+			end
+		elseif not iv then
+			p = ply:GetSiphoning()
+			iv = IsValid(p)
+
+			if ply.SiphonArms ~= iv then
+				ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, ply:LookupSequence(siphonseq), ply.SiphonArms and 1 or 0, ply.SiphonArms)
+				ply.SiphonArms = iv
+
+				if iv then
+					local ang = (p:GetPos() - ply:GetPos()):Angle()
+					ang.pitch = 10
+					ply:SetEyeAngles(ang)
+				end
+
+				if CLIENT then
+					--print("Updating arms for", ply)
+					ply.SiphonArmFade = CurTime()
+					if iv then ply.SiphonArmDistance = p:GetPos():Distance(ply:GetPos()) - 30 end
+				end
 			end
 		end
+	elseif ply:GetCycle() > 0.5 then
+		ply:SetCycle(0.5)
 	end
 
 	--[[if iv and CLIENT then
