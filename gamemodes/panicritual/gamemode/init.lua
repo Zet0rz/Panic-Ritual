@@ -3,15 +3,20 @@ AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("player_class.lua")
 AddCSLuaFile("cl_jumpscares.lua")
 AddCSLuaFile("player_meta.lua")
+AddCSLuaFile("round.lua")
 AddCSLuaFile("animations.lua")
 AddCSLuaFile("antistuck.lua")
+AddCSLuaFile("spectating.lua")
+AddCSLuaFile("screamandshout.lua")
 
 include("shared.lua")
+include("round.lua")
 include("player_class.lua")
 include("player_meta.lua")
-include("sv_round.lua")
 include("animations.lua")
 include("antistuck.lua")
+include("spectating.lua")
+include("screamandshout.lua")
 
 -- Demon maul, pounce attack
 --AddCSLuaFile("demonmaul.lua")
@@ -21,8 +26,12 @@ include("antistuck.lua")
 --AddCSLuaFile("demonsoulsiphon.lua")
 --include("demonsoulsiphon.lua")
 
+AddCSLuaFile("horroraspects.lua")
+include("horroraspects.lua")
+
 function GM:PlayerInitialSpawn(ply)
 	player_manager.SetPlayerClass(ply, "player_ritual_base")
+	--ply:SetShouldServerRagdoll(true)
 	self:RestartRound()
 end
 

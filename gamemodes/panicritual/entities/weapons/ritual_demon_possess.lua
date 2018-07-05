@@ -99,7 +99,7 @@ function SWEP:Think()
 	if SERVER then
 		local ct = CurTime()
 		if self.Leaping then
-			if self.Owner:IsOnGround() then
+			if self.Owner:IsOnGround() or self.Owner:WaterLevel() >= 2 then
 				self.NextLeap = CurTime() + leapcooldown
 				self.Leaping = false
 				if not self.FadeTime then
@@ -127,10 +127,11 @@ function SWEP:Leap(power)
 	self.Owner:SetVelocity((self.Owner:GetAimVector() + Vector(0,0,0.4))*power)
 	self.Leaping = true
 	self.LeapCharging = false
+	self.NextLeap = nil
 end
 
 function SWEP:OnRemove()
-	if self.Owner:GetFading() then self.Owner:SetFading(false) end
+	if IsValid(self.Owner) and self.Owner:GetFading() then self.Owner:SetFading(false) end
 end
 
 
@@ -162,7 +163,6 @@ if SERVER then
 	function PLAYER:SetFading(b)
 		self:SetNW2Bool("Ritual_Fading", b)
 		if b then
-			print("Is tru")
 			self:SetNoCollidePlayers(true)
 		else
 			local tr = util.TraceEntity({start = self:GetPos(), endpos = self:GetPos(), filter = self}, self)
@@ -198,6 +198,11 @@ if SERVER then
 		self.TormentInflictor = inflictor
 		self:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 		self:SetNW2Bool("Ritual_Torment", true)
+
+		local e = EffectData()
+		e:SetEntity(self)
+		e:SetRadius(10)
+		util.Effect("ritual_torment", e, true, true)
 	end
 
 	function PLAYER:ReleaseSoulTorment()
@@ -213,21 +218,24 @@ end
 
 local tormentanim = "death_04"
 -- Attempt to redo this using Death-related hooks instead?
+-- Need to fix clientside ragdoll flinging away :(
 
---[[hook.Add("CalcMainActivity", "Ritual_TormentAnim", function(ply)
+hook.Add("CalcMainActivity", "Ritual_TormentAnim", function(ply)
 	if ply:GetTormented() then
 		return ACT_DIEVIOLENT, ply:LookupSequence(tormentanim)
 	end
 end)
 
 hook.Add("UpdateAnimation", "Ritual_TormentAnim", function(ply, vel, groundspeed)
-	if ply:GetTormented() ~= ply.TormentAnim then
-		ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, ply:LookupSequence(tormentanim), ply.TormentAnim and 1 or 0, ply.TormentAnim)
+	if ply:GetTormented() ~= ply.TormentAnim then	
+		local seq = ply:LookupSequence(tormentanim)
+		ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, seq, ply.TormentAnim and 1 or 0, true)
 		ply:SetCycle(0)
 		ply.TormentAnim = ply:GetTormented()
+		ply.TormentDeathTime = ply.TormentAnim and CurTime() + ply:SequenceDuration(seq) or nil
 	end
 
-	if ply.TormentAnim and ply:GetCycle() >= 1 then
+	if ply.TormentAnim and ply.TormentDeathTime < CurTime() then
 		ply:SetCycle(1)
 		if SERVER then
 			local d = DamageInfo()
@@ -242,7 +250,19 @@ hook.Add("UpdateAnimation", "Ritual_TormentAnim", function(ply, vel, groundspeed
 			ply:ReleaseSoulTorment()
 		end
 	end
-end)]]
+end)
+
+if SERVER then
+	hook.Add("DoPlayerDeath", "Ritual_TormentDeath", function(ply, att, dmg)
+		--[[ply:SoulTorment(att)
+		print("Tormenting")
+		ply:CreateRagdoll()]]
+	end)
+
+	hook.Add("PlayerSpawn", "Ritual_TormentSpawn", function(ply)
+		if ply:GetTormented() then ply:ReleaseSoulTorment() end
+	end)
+end
 
 if CLIENT then
 	hook.Add("PrePlayerDraw", "Ritual_FadeDraw", function(ply)
