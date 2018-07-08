@@ -22,7 +22,7 @@ SWEP.Instructions	= "Left Click to leap!"
 
 SWEP.HoldType = "knife"
 
-SWEP.ViewModel	= "models/weapons/c_crowbar.mdl"
+SWEP.ViewModel	= "models/weapons/c_ritual_demon.mdl"
 SWEP.WorldModel	= "models/weapons/w_crowbar.mdl"
 SWEP.UseHands = true
 SWEP.vModel = true
@@ -47,6 +47,37 @@ function SWEP:Initialize()
 	self.NextLeap = 0
 	self.NextFade = 0
 	self:SetHoldType(self.HoldType)
+end
+
+if SERVER then
+	function SWEP:PlayActAndWait(act, cycle)
+		local vm = self.Owner:GetViewModel()
+		local seq = vm:SelectWeightedSequence(act)
+		local len = vm:SequenceDuration(seq)
+
+		vm:SetSequence(seq)
+		if cycle then
+			vm:SetCycle(cycle)
+			len = len * (1 - cycle)
+		end
+		self.NextIdleTime = CurTime() + len
+
+		return len
+	end
+
+	function SWEP:PlaySequenceAndWait(seq, cycle)
+		local vm = self.Owner:GetViewModel()
+		local id, dur = vm:LookupSequence(seq)
+
+		vm:SetSequence(id)
+		if cycle then
+			vm:SetCycle(cycle)
+			len = len * (1 - cycle)
+		end
+		self.NextIdleTime = CurTime() + dur
+
+		return dur
+	end
 end
 
 function SWEP:Deploy()
@@ -85,18 +116,8 @@ local leapcooldown = 2 -- Cooldown after landing
 local minleap = 300
 local chargedleap = 300 -- +power for charging fully
 local maxchargetime = 1.5 -- Seconds of LMB to reach full charge leap
-function SWEP:SecondaryAttack()
-	if SERVER and self.NextLeap and CurTime() > self.NextLeap then
-		if self.FadeTime then
-			self:Leap(minleap + chargedleap)
-		else
-			self.LeapCharging = CurTime()
-		end
-	end
-end
-
-function SWEP:Think()
-	if SERVER then
+if SERVER then
+	function SWEP:Think()
 		local ct = CurTime()
 		if self.Leaping then
 			if self.Owner:IsOnGround() or self.Owner:WaterLevel() >= 2 then
@@ -119,6 +140,20 @@ function SWEP:Think()
 				self:Leap(power)
 			end
 		end
+
+		if self.NextIdleTime and not self.AnimBlocked and ct > self.NextIdleTime then
+			self:SendWeaponAnim(self.NextIdleAct or ACT_VM_IDLE)
+			self.NextIdleTime = nil
+		end
+	end
+end
+function SWEP:SecondaryAttack()
+	if SERVER and self.NextLeap and CurTime() > self.NextLeap then
+		if self.FadeTime then
+			self:Leap(minleap + chargedleap)
+		else
+			self.LeapCharging = CurTime()
+		end
 	end
 end
 
@@ -134,12 +169,23 @@ function SWEP:OnRemove()
 	if IsValid(self.Owner) and self.Owner:GetFading() then self.Owner:SetFading(false) end
 end
 
+function SWEP:EnterFade()
+	self.AnimBlocked = true
+	self:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
+end
+
+function SWEP:ExitFade(kill)
+	self.AnimBlocked = false
+	self:PlayActAndWait(IsValid(kill) and ACT_VM_HITCENTER or ACT_VM_MISSCENTER)
+end
+
+
+
 
 
 --[[-------------------------------------------------------------------------
-	Logic for possessing
+	Logic for possessing/torment
 ---------------------------------------------------------------------------]]
-
 
 
 local PLAYER = FindMetaTable("Player")
@@ -164,17 +210,23 @@ if SERVER then
 		self:SetNW2Bool("Ritual_Fading", b)
 		if b then
 			self:SetNoCollidePlayers(true)
+			local wep = self:GetActiveWeapon()
+			if wep.EnterFade then wep:EnterFade() end
 		else
+			local wep = self:GetActiveWeapon()
 			local tr = util.TraceEntity({start = self:GetPos(), endpos = self:GetPos(), filter = self}, self)
 			if IsValid(tr.Entity) and tr.Entity:IsPlayer() then
 				if tr.Entity:IsDemon() then
 					self:CollideWhenPossible()
+					if wep.ExitFade then wep:ExitFade() end
 				else
 					tr.Entity:SoulTorment(self)
 					self:SetNoCollidePlayers(false)
+					if wep.ExitFade then wep:ExitFade(tr.Entity) end
 				end
 			else
 				self:SetNoCollidePlayers(false)
+				if wep.ExitFade then wep:ExitFade() end
 			end
 		end
 
