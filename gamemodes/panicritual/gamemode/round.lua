@@ -77,7 +77,6 @@ if SERVER then
 			if demons[v] then
 				v:Spawn()
 				v:SetDemon()
-				v:Give("ritual_demon_circles")
 				v.DemonChance = 1
 			else
 				v:Spawn()
@@ -111,11 +110,22 @@ if SERVER then
 		circle:SetAngles(ang)
 		circle:Spawn()
 
+		local e = EffectData()
+		e:SetOrigin(pos)
+		e:SetAngles(ang)
+		e:SetRadius(100) -- Size of bottom circulation
+		e:SetScale(100) -- Height of pillar
+		e:SetMagnitude(10) -- "thickness" of particles (amount/scale)
+		e:SetFlags(TEAM_DEMONS) -- Only show for demons
+		util.Effect("ritual_circlesummon", e, true, true)
+
 		numcircles = numcircles + 1
 		circles[numcircles] = circle
 		if numcircles >= total_circles then
 			StartMainPhase()
 		end
+
+		return true -- It was placed correctly
 	end
 
 	function GM:PostRound()

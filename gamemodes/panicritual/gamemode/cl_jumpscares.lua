@@ -104,31 +104,59 @@ end)]]
 ---------------------------------------------------------------------------]]
 
 local scares = {}
+local eye = Material("sprites/redglow1")
+local eyecolor = Color(255,0,0)
+local eyesize = 5
 hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
-	local lp = LocalPlayer()
-	if lp:IsHuman() and ply:IsDemon() then
-		local vis, tr = ply:VisibleTo(lp)
-		if vis then
-			local ct = CurTime()
-			local dist = ply:GetPos():Distance(lp:GetPos())
+	if ply:IsDemon() then
+		-- Jumpscares
+		local lp = LocalPlayer()
+		if lp:IsHuman() then
+			local vis, tr = ply:VisibleTo(lp)
+			if vis then
+				local ct = CurTime()
+				local dist = ply:GetPos():Distance(lp:GetPos())
 
-			if not scares[ply] or (scares[ply].reset and scares[ply].reset < ct) then
-				scares[ply] = {next = math.huge}
-			end
-
-			if scares[ply].next > dist then
-				local index
-				for k,v in ipairs(jumpscares.distances) do
-					if v > dist then index = k break end
+				if not scares[ply] or (scares[ply].reset and scares[ply].reset < ct) then
+					scares[ply] = {next = math.huge}
 				end
-				if index then
-					local sounds = jumpscares.sounds[index]
-					surface.PlaySound(sounds[math.random(#sounds)])
-				end
-			end
 
-			scares[ply].reset = ct + ScareResetTime
-			scares[ply].next = DoubleScareDistance(dist)
+				if scares[ply].next > dist then
+					local index
+					for k,v in ipairs(jumpscares.distances) do
+						if v > dist then index = k break end
+					end
+					if index then
+						local sounds = jumpscares.sounds[index]
+						surface.PlaySound(sounds[math.random(#sounds)])
+					end
+				end
+
+				scares[ply].reset = ct + ScareResetTime
+				scares[ply].next = DoubleScareDistance(dist)
+			end
+		end
+
+		-- Fog eyes
+		render.SetMaterial(eye)
+		local eyes = ply:GetAttachment(ply:LookupAttachment("eyes"))
+		render.DrawSprite(eyes.Pos, 10, 10, eyecolor)
+		--[[local le = ply:GetAttachment(ply:LookupAttachment("lefteye"))
+		render.DrawSprite(le.Pos, 10, 10, eyecolor)
+		local re = ply:GetAttachment(ply:LookupAttachment("righteye"))
+		render.DrawSprite(re.Pos, 10, 10, eyecolor)]]
+
+		local eyes = ply:GetAttachment(ply:LookupAttachment("eyes"))
+		if eyes then
+			local r = eyes.Ang:Right()
+			local f = eyes.Ang:Forward()
+			local lefteyepos = eyes.Pos + r * -1.5 + f * 1
+			local righteyepos = eyes.Pos + r * 1.5 + f * 1
+
+			cam.Start2D()
+			render.DrawSprite(lefteyepos, eyesize, eyesize, eyecolor)
+			render.DrawSprite(righteyepos, eyesize, eyesize, eyecolor)
+			cam.End2D()
 		end
 	end
 end)

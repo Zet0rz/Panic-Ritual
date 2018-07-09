@@ -100,6 +100,13 @@ function SWEP:PrimaryAttack()
 	if CLIENT then return end
 	--if self.Leaping then return end
 
+	--if self.CirclesToPlace then
+	if true then --GAMEMODE.RoundState == ROUND_PREPARE then
+		-- Logic for circle placing
+		local b = GAMEMODE:PlaceRitualCircle(self.Owner:GetEyeTrace().HitPos, Angle(0,self.Owner:GetAngles().y,0))
+		if b then self:PlayActAndWait(ACT_VM_THROW) end
+	return end
+
 	local ct = CurTime()
 	if ct < self.NextFade then return end
 
