@@ -74,7 +74,7 @@ if SERVER then
 	end
 
 	function ENT:StartTouch(ent)
-		if IsValid(ent) and ent:IsPlayer() and ent:IsHuman() then
+		if GAMEMODE.RoundState == ROUND_ONGOING and IsValid(ent) and ent:IsPlayer() and ent:IsHuman() then
 			local wep = ent:GetWeapon("ritual_human")
 			if IsValid(wep) and wep:GetHasDoll() then
 				print("Starting cleanse")
@@ -87,17 +87,16 @@ if SERVER then
 		if IsValid(ent) and ent:IsPlayer() and ent:IsHuman() then
 			local wep = ent:GetWeapon("ritual_human")
 			if IsValid(wep) and wep:GetHasDoll() then
-				print("Stopping cleanse")
 				wep:StopDollCleanse(self)
 			end
 		end
 	end
 
-	function ENT:Progress(circle)
+	function ENT:Progress(circle, caller)
 		if circle == self then
 			if self.CurrentProgress >= self.RequiredCharge then
 				print("Completed", self)
-				self:Complete()
+				self:Complete(caller)
 			end
 		elseif self.CurrentProgress < self.RequiredCharge and not self.VisitedCircles[circle] then
 			self.CurrentProgress = self.CurrentProgress + 1
@@ -105,6 +104,7 @@ if SERVER then
 			local candle = self.Candles[self.CurrentProgress]
 			if IsValid(candle) then candle:Complete() end
 			self.VisitedCircles[circle] = true
+			hook.Run("Ritual_CircleProgressed", self, circle, caller)
 		end
 	end
 
@@ -117,12 +117,14 @@ if SERVER then
 		return self.VisitedCircles[circle] or false
 	end
 
-	function ENT:Complete()
+	function ENT:Complete(caller)
 		local candle = self.Candles[0]
 		if IsValid(candle) then candle:Complete() end
 
 		self.Doll:Reset(true)
-		self.IsComplete = true
+		self.Completed = true
+
+		hook.Run("Ritual_CircleCompleted", self, caller)
 	end
 end
 

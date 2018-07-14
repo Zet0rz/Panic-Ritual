@@ -13,6 +13,7 @@ if SERVER then
 	-- CONFIG VARIABLES
 	local total_circles = 3 -- Demons place 3 circles
 	local total_circle_charge = 2 -- Runners need to bring the doll past 2 other circles
+	local required_circles = 2 -- Complete 2 circles to unlock weapons
 	local postroundtime = 5
 
 	local function PickWeightedRandomPlayers(players, num)
@@ -60,6 +61,7 @@ if SERVER then
 	end)
 
 	local numcircles = 0
+	local completedcircles = 0
 	local circles = {}
 
 	function GM:RestartRound()
@@ -86,6 +88,7 @@ if SERVER then
 		end
 
 		numcircles = 0
+		completedcircles = 0
 		circles = {}
 		self:SetRoundState(ROUND_PREPARE)
 	end
@@ -103,16 +106,24 @@ if SERVER then
 		GAMEMODE:SetRoundState(ROUND_ONGOING)
 	end
 
+	local function SpaceForCicle(pos, ang)
+		-- Some logic to check if there's space for the circle, and if so, where to place it
+		return pos,ang
+	end
+
 	function GM:PlaceRitualCircle(pos, ang)
+		local p,a = SpaceForCicle(pos,ang)
+		if not p then return end
+
 		local circle = ents.Create("ritual_circle")
 		circle:SetProgressRequirement(total_circle_charge <= 0 and total_circles + total_circle_charge or total_circle_charge)
-		circle:SetPos(pos)
-		circle:SetAngles(ang)
+		circle:SetPos(p)
+		circle:SetAngles(a)
 		circle:Spawn()
 
 		local e = EffectData()
-		e:SetOrigin(pos)
-		e:SetAngles(ang)
+		e:SetOrigin(p)
+		e:SetAngles(a)
 		e:SetRadius(100) -- Size of bottom circulation
 		e:SetScale(100) -- Height of pillar
 		e:SetMagnitude(10) -- "thickness" of particles (amount/scale)
@@ -150,6 +161,11 @@ if SERVER then
 		self:PostRound()
 	end
 
+	function GM:Ritual_CircleCompleted(circle, ply)
+		completedcircles = completedcircles + 1
+	end
+	function GM:GetCompletedCircles() return completedcircles end
+
 	local function CheckTeams()
 		local humans = team.NumPlayers(TEAM_HUMANS) < 1
 		local demons = team.NumPlayers(TEAM_DEMONS) < 1
@@ -174,6 +190,18 @@ if SERVER then
 	hook.Add("PlayerDeath", "Ritual_PlayerToSpectate", function(ply)
 		ply:SetTeam(TEAM_SPECTATORS)
 	end)
+
+	function GM:Ritual_CanPickUpDoll(doll, wep, caller)
+		print("This is run", doll.RitualCircle.Completed, doll:GetCharged())
+		return not doll.RitualCircle.Completed or doll:GetCharged()
+	end
+	--[[function GM:Ritual_DollPickedUp(doll, wep, caller)
+		wep:SetCharged(doll.RitualCircle.Completed)
+	end]]
+
+	function GM:Ritual_CanChargeDoll(doll, wep, caller)
+		return doll.RitualCircle.Completed and completedcircles >= required_circles
+	end
 end
 
 if CLIENT then

@@ -17,7 +17,7 @@ local resettime = 10
 local model = "models/props_c17/doll01.mdl"
 
 function ENT:SetupDataTables()
-	
+	self:NetworkVar("Bool", 1, "Charged")
 end
 
 function ENT:Initialize()
@@ -26,7 +26,12 @@ function ENT:Initialize()
 	self:PhysicsInit(SOLID_VPHYSICS)
 	if SERVER then
 		self:SetUseType(SIMPLE_USE)
-		self:Reset(true)
+		if not self.Dropped then
+			self:Reset(true)
+		else
+			self.ResetTime = CurTime() + resettime
+		end
+		self.AmmoCharge = 0
 	end
 
 	if self:GetMoveType() ~= 0 then
@@ -40,6 +45,8 @@ end
 if SERVER then
 	function ENT:TransferDollData(doll)
 		self:SetRitualCircle(doll.RitualCircle)
+		self:SetCharged(doll:GetCharged())
+		self.AmmoCharge = doll.AmmoCharge
 	end
 
 	function ENT:SetRitualCircle(circle)
@@ -58,21 +65,42 @@ if SERVER then
 		self.OnRitual = true
 		self.Complete = false
 		self.ResetTime = nil
+
+		self:SetCharged(false)
 	end
 
 	function ENT:Pickup(ply)
 		-- Pick up, give as weapon to player and set relevant information
+		local wep = ply:GetWeapon("ritual_human")
+		if not IsValid(wep) then return end
+
+		print("Picked up")
+		wep:PickupDoll(self)
+		self.RitualCircle:SetDoll(wep)
+		hook.Run("Ritual_DollPickedUp", self, wep, caller)
+		self:Remove()
 	end
 
 	function ENT:Use(activator, caller)
-		if not self.RitualCircle.IsComplete and IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
+		print("yay")
+		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
 			local wep = caller:GetWeapon("ritual_human")
+			print(wep, IsValid(wep), wep:GetHasDoll())
 			if IsValid(wep) and not wep:GetHasDoll() then
-				wep:PickupDoll(self)
-				self.RitualCircle:SetDoll(wep)
-				self:Remove()
+				print("hey")
+				print("hi", hook.Run("Ritual_CanPickUpDoll", self, wep, caller))
+				if hook.Run("Ritual_CanPickUpDoll", self, wep, caller) then
+					print("Picked up")
+					self:Pickup(caller)
+				else
+					wep:StartDollCharge(self)
+				end
 			end
 		end
+	end
+
+	function ENT:AllowCharge(wep)
+		return hook.Run("Ritual_CanChargeDoll", self, wep, wep.Owner)
 	end
 end
 
