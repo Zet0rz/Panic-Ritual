@@ -21,7 +21,7 @@ SWEP.Instructions	= "Bring the doll to the other ritual circles!"
 SWEP.HoldType = "normal"
 
 SWEP.ViewModel	= "models/weapons/c_ritual_human.mdl"
-SWEP.WorldModel	= "models/weapons/w_grenade.mdl"
+SWEP.WorldModel	= "models/weapons/w_ritual_human.mdl"
 SWEP.UseHands = true
 
 local cleansetime = 3
@@ -116,12 +116,13 @@ if SERVER then
 		self:SetCharged(false)
 		self.Owner:SetAmmo(0, ammo_type)
 		self.Charging = nil
+		self.Shooting = false
 		if self.Cleansing then SWEP:StopDollCleanse(self.Cleansing) end
 		UpdateAnimations(self)
 	end
 
 	function SWEP:Reset(fromcircle) -- Called from the ritual circle. Burn up and reset!
-		if not fromcircle then
+		--[[if not fromcircle then
 			self.RitualCircle:Reset()
 			return
 		end
@@ -132,9 +133,16 @@ if SERVER then
 		doll:Spawn()
 		doll:Reset(fromcircle)
 
-		losedoll(self)
+		losedoll(self)]]
 
 		self:PlayActAndWait(ACT_VM_UNDEPLOY, 0.2)
+
+		local e = EffectData()
+		e:SetEntity(self)
+		e:SetAttachment(1)
+		e:SetStart(Vector(0,0,0))
+		e:SetOrigin(Vector(0,0,10))
+		util.Effect("ritual_dollreset", e, true, true)
 	end
 
 	function SWEP:Drop() -- Drop this as a doll entity!
@@ -190,23 +198,23 @@ if SERVER then
 		if not doll:AllowCharge(self) then return end
 		
 		local ct = CurTime()
-		local time = self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_IN) -- Replace with charge anim
 		self.InCleanseLoop = false
-		self.CleanseLoop = ct + time
+		self.CleanseLoop = ct
 		self.CleanseFinish = ct + cleansetime
 		self.Charging = doll
 	end
 
 	function SWEP:StopDollCharge(doll)
 		self.Charging = nil
-		self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT) -- Replace with charge anim
+		--self.NextIdleTime = nil
+		UpdateAnimations(self)
 	end
 
 	function SWEP:CompleteDollCharge(doll)
 		self.Charging = nil
 		doll:Pickup(self.Owner)
 		self:Charge()
-		self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT) -- Replace with charge anim
+		self:PlayActAndWait(ACT_VM_PICKUP) -- Replace with charge anim
 	end
 
 	function SWEP:StopDollCleanse(circle)
@@ -273,7 +281,7 @@ if SERVER then
 		elseif self.Charging then
 			if not self.InCleanseLoop then
 				if ct > self.CleanseLoop then
-					self:SendWeaponAnim(ACT_VM_DEPLOYED_LIFTED_IDLE) -- Replace with charge anim
+					self:SendWeaponAnim(ACT_VM_READY) -- Replace with charge anim
 					self.InCleanseLoop = true
 				end
 			else
@@ -288,6 +296,8 @@ if SERVER then
 					end
 				end
 			end
+		elseif self.Shooting and self.Owner:KeyReleased(IN_ATTACK) then
+			self:PlayActAndWait(ACT_VM_DEPLOYED_OUT)
 		end
 	end
 end
@@ -306,7 +316,6 @@ end
 local firerate = 0.05
 function SWEP:PrimaryAttack()
 	if self:GetCharged() and (not self.NextShot or self.NextShot <= CurTime()) then
-		print("SHOT!")
 		self:FireBullets({
 			Attacker = self.Owner,
 			Damage = 2,
@@ -317,6 +326,8 @@ function SWEP:PrimaryAttack()
 		})
 		self.NextShot = CurTime() + firerate
 		self.Owner:RemoveAmmo(1, ammo_type)
+		self:SendWeaponAnim(ACT_VM_DEPLOYED_FIRE)
+		self.Shooting = true
 		if SERVER and self.Owner:GetAmmoCount(ammo_type) <= 0 then self:Reset() end
 	end
 end

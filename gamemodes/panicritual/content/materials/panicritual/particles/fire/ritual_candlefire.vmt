@@ -1,0 +1,6 @@
+"UnlitGeneric"
+{
+	"$basetexture" "panicritual/particles/fire/ritual_candlefire"
+	"$additive" 1
+	"$vertexcolor" 1
+}

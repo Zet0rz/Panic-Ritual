@@ -202,6 +202,8 @@ if SERVER then
 	function GM:Ritual_CanChargeDoll(doll, wep, caller)
 		return doll.RitualCircle.Completed and completedcircles >= required_circles
 	end
+
+	util.AddNetworkString("Ritual_DollReset")
 end
 
 if CLIENT then
@@ -213,5 +215,29 @@ if CLIENT then
 	net.Receive("Ritual_TeamWin", function()
 		local t = net.ReadUInt(2)
 		hook.Run("Ritual_TeamWin", t)
+	end)
+
+	-- Doll reset effects
+	net.Receive("Ritual_DollReset", function()
+		local ent = net.ReadEntity()
+		if IsValid(ent) then
+			local e = EffectData()
+			e:SetEntity(ent)
+			e:SetAttachment(ent:LookupAttachment("doll_body")) -- Body
+			if ent:IsWeapon() and ent:IsCarriedByLocalPlayer() then
+				e:SetStart(Vector(0,-4,-3))
+				e:SetOrigin(Vector(0,-3,5))
+				e:SetScale(1)
+				e:SetRadius(15)
+				e:SetFlags(1)
+				timer.Simple(0.3, function() if IsValid(ent) then util.Effect("ritual_dollreset", e, true, true) end end)
+			else
+				e:SetStart(Vector(0,0,-5))
+				e:SetOrigin(Vector(0,0,10))
+				e:SetScale(2)
+				e:SetRadius(20)
+				util.Effect("ritual_dollreset", e, true, true)
+			end
+		end
 	end)
 end

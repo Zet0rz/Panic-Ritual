@@ -12,25 +12,22 @@ ENT.Spawnable		= false
 ENT.AdminOnly		= false
 ENT.RenderGroup		= RENDERGROUP_BOTH
 
-local offmodel = "models/Gibs/HGIBS_spine.mdl"
-local onmodel = "models/Gibs/HGIBS.mdl"
+local model = "models/panicritual/candle.mdl"
 
-util.PrecacheModel(offmodel)
-util.PrecacheModel(onmodel)
+util.PrecacheModel(model)
 
 function ENT:SetupDataTables()
 	self:NetworkVar("Bool", 0, "Lit")
 end
 
 function ENT:Initialize()
-	self:SetModel(offmodel)
+	self:SetModel(model)
 	self:SetLit(false)
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetNotSolid(true)
 end
 
 function ENT:Complete()
-	self:SetModel(onmodel)
 	self:SetLit(true)
 end
 
