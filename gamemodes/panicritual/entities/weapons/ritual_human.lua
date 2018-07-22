@@ -20,7 +20,7 @@ SWEP.Instructions	= "Bring the doll to the other ritual circles!"
 
 SWEP.HoldType = "normal"
 
-SWEP.ViewModel	= "models/weapons/c_ritual_human.mdl"
+SWEP.ViewModel	= "models/weapons/c_ritual_human.mdl" --"models/weapons/c_ritual_human.mdl"
 SWEP.WorldModel	= "models/weapons/w_ritual_human.mdl"
 SWEP.UseHands = true
 
@@ -28,6 +28,12 @@ local cleansetime = 3
 local chargetime = 5
 local ammo_type = "GaussEnergy"
 local chargeammo = 100
+
+-- Related to evil scale
+local mindist = 300 -- Distance at which scale is 1
+local maxdist = 1000 -- How far away from mindist scale reaches 0
+local updatedelay = 5 -- How often to run the distance check
+local approach = 0.5 -- How much the client interpolates last known to recently updated per second (smoothens)
 
 SWEP.Primary.ClipSize		= -1
 SWEP.Primary.DefaultClip	= -1
@@ -42,14 +48,24 @@ SWEP.Secondary.Ammo			= "none"
 function SWEP:SetupDataTables()
 	self:NetworkVar("Bool", 0, "HasDoll")
 	self:NetworkVar("Bool", 1, "Charged")
+	self:NetworkVar("Bool", 2, "Shooting")
+	self:NetworkVar("Float", 0, "EvilScale")
 
 	if SERVER then
-		self:NetworkVarNotify("HasDoll", self.DollPickupAnimation)
+		--self:NetworkVarNotify("HasDoll", self.DollPickupAnimation)
 	end
 end
 
 function SWEP:Initialize()
-	if SERVER then self:SetHasDoll(false) end
+	if SERVER then
+		self:SetHasDoll(false)
+		self:SetCharged(false)
+		self:SetShooting(false)
+		self:SetEvilScale(0)
+	else
+		self.Owner:ManipulateBoneAngles(self.Owner:LookupBone("ValveBiped.Bip01_R_Hand"), Angle(0,0,0))
+	end
+	self:SetHoldType(self.HoldType)
 end
 
 local function UpdateAnimations(self)
@@ -114,35 +130,39 @@ if SERVER then
 	local function losedoll(self)
 		self:SetHasDoll(false)
 		self:SetCharged(false)
+		self:SetShooting(false)
+		self:SetEvilScale(0)
+
+		self:SetHoldType(self.HoldType)
+
 		self.Owner:SetAmmo(0, ammo_type)
 		self.Charging = nil
-		self.Shooting = false
 		if self.Cleansing then SWEP:StopDollCleanse(self.Cleansing) end
+
 		UpdateAnimations(self)
 	end
 
 	function SWEP:Reset(fromcircle) -- Called from the ritual circle. Burn up and reset!
-		--[[if not fromcircle then
-			self.RitualCircle:Reset()
-			return
+		if IsValid(self.RitualCircle) then
+			if not fromcircle then
+				self.RitualCircle:Reset()
+				return
+			end
+
+			local doll = ents.Create("ritual_doll")
+			doll:SetRitualCircle(self.RitualCircle)
+			self.RitualCircle:SetDoll(doll)
+			doll:Spawn()
+			doll:Reset(fromcircle)
 		end
 
-		local doll = ents.Create("ritual_doll")
-		doll:SetRitualCircle(self.RitualCircle)
-		self.RitualCircle:SetDoll(doll)
-		doll:Spawn()
-		doll:Reset(fromcircle)
-
-		losedoll(self)]]
+		losedoll(self)
 
 		self:PlayActAndWait(ACT_VM_UNDEPLOY, 0.2)
 
-		local e = EffectData()
-		e:SetEntity(self)
-		e:SetAttachment(1)
-		e:SetStart(Vector(0,0,0))
-		e:SetOrigin(Vector(0,0,10))
-		util.Effect("ritual_dollreset", e, true, true)
+		net.Start("Ritual_DollReset")
+			net.WriteEntity(self)
+		net.Broadcast()
 	end
 
 	function SWEP:Drop() -- Drop this as a doll entity!
@@ -243,6 +263,19 @@ if SERVER then
 		self.Owner:SetAmmo(self.ChargeAmmo, ammo_type)
 	end
 
+	function SWEP:UpdateEvilScale()
+		local bestdist = math.huge
+		for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
+			-- Even though there should only ever be 1, support more
+			if v:Alive() then
+				local dist = self:GetPos():Distance(v:GetPos())
+				if dist < bestdist then bestdist = dist end
+			end
+		end
+		local scale = math.Clamp(1 - (bestdist - mindist)/maxdist, 0, 1)
+		self:SetEvilScale(scale)
+	end
+
 	function SWEP:Think()
 		local ct = CurTime()
 
@@ -262,6 +295,9 @@ if SERVER then
 				self.Sprinting = false
 				UpdateAnimations(self)
 			end
+		elseif self.Sprinting then
+			self.Sprinting = false
+			UpdateAnimations(self)
 		end
 
 		if self.Cleansing then
@@ -296,8 +332,15 @@ if SERVER then
 					end
 				end
 			end
-		elseif self.Shooting and self.Owner:KeyReleased(IN_ATTACK) then
+		elseif self:GetShooting() and self.Owner:KeyReleased(IN_ATTACK) then
 			self:PlayActAndWait(ACT_VM_DEPLOYED_OUT)
+			self:SetShooting(false)
+			self:SetHoldType(self.HoldType)
+		end
+
+		if not self.NextEvilUpdate or ct > self.NextEvilUpdate then
+			self:UpdateEvilScale()
+			self.NextEvilUpdate = ct + updatedelay
 		end
 	end
 end
@@ -308,8 +351,147 @@ if CLIENT then
 		local b = net.ReadBool()
 	end)
 
-	function SWEP:PostDrawViewModel(vm, wep, ply)
+	-- Function run to draw the red eyes depending on distance to demon(s)
+	-- Runs both on world model and viewmodel
+	local particledelay = 0.05
+	local gravity = Vector(0,0,100)
+	local particles = {
+		"panicritual/particles/fire/ritual_fire_cloud1",
+		"panicritual/particles/fire/ritual_fire_cloud2",
+	}
+	local pcf = "ritual_doll_burn_eyes"
+	local function drawredeyes(self, viewmodel)
+		if not self.LEyeEffect == self:GetHasDoll() then
+			if self.LEyeEffect then
+				self.LEyeEffect:StopEmission(false,true)
+				self.REyeEffect:StopEmission(false,true)
 
+				self.LEyeEffect = nil
+				self.REyeEffect = nil
+			else
+				self.LEyeEffect = CreateParticleSystem(viewmodel or self, pcf, PATTACH_POINT_FOLLOW, (viewmodel or self):LookupAttachment("doll_l_eye_vm"), Vector(10000,1000,100))
+				self.LEyeEffect:SetControlPoint(1, Vector(1,0.5,1))
+				self.LEyeEffect:SetShouldDraw(not viewmodel)
+
+				self.REyeEffect = CreateParticleSystem(viewmodel or self, pcf, PATTACH_POINT_FOLLOW, (viewmodel or self):LookupAttachment("doll_r_eye_vm"), Vector(-10,0,0))
+				self.REyeEffect:SetControlPoint(1, Vector(1,0.5,1))
+				self.REyeEffect:SetShouldDraw(not viewmodel)
+			end
+		end
+
+		if self.LEyeEffect then
+			self.LEyeEffect:SetControlPoint(2, Vector(1,0,0)) -- Scale
+			self.REyeEffect:SetControlPoint(2, Vector(1,0,0))
+
+			if viewmodel then
+				self.LEyeEffect:Render()
+				self.REyeEffect:Render()
+			end
+		end
+		--[[if viewmodel then
+			--PrintTable(viewmodel:GetAttachments())
+			render.SetColorMaterial()
+			local ep1 = viewmodel:GetAttachment(viewmodel:LookupAttachment("doll_l_eye_vm")).Pos
+			local ep2 = viewmodel:GetAttachment(viewmodel:LookupAttachment("doll_r_eye_vm")).Pos
+			--render.DrawSphere(ep1, 1, 10, 10, Color(255,255,255))
+			--render.DrawSphere(ep2, 1, 10, 10, Color(255,255,255))
+			local pos,ang = viewmodel:GetBonePosition(viewmodel:LookupBone("Doll"))
+			render.SetColorMaterialIgnoreZ()
+			render.DrawSphere(pos, 1, 10, 10, Color(255,255,255))
+			render.DrawBeam(pos, ep1, 1, 0,0, Color(pos:Distance(ep1)*10,0,0))
+
+			--render.SetMaterial()
+		end]]
+	end
+
+	function SWEP:GetViewModelPosition(pos,ang)
+		--return pos + ang:Forward()*70, ang + Angle(0,CurTime()%360*30,0)
+		--return pos + ang:Right()*10 + ang:Forward()*10, ang + Angle(0,90,0)
+	end
+
+	function SWEP:CalcViewModelView(vm, oldPos, oldAng, pos, ang)
+		--return pos, ang
+	end
+	
+	function SWEP:PostDrawViewModel(vm, wep, ply)
+		drawredeyes(self, vm)
+	end
+
+	function SWEP:TestEffect(eff, att)
+		if self:IsCarriedByLocalPlayer() then
+			--[[local e = LocalPlayer():GetViewModel():CreateParticleEffect(eff or pcf, att,
+				{
+					{attachtype = PATTACH_POINT_FOLLOW, entity = LocalPlayer():GetViewModel()},
+					{attachtype = PATTACH_POINT_FOLLOW, entity = LocalPlayer():GetViewModel()},
+				}
+			)]]
+			local e = CreateParticleSystem(LocalPlayer():GetViewModel(), eff, PATTACH_POINT_FOLLOW, 4)
+			e:SetIsViewModelEffect(true)
+			--e:AddControlPoint(0, self, PATTACH_POINT_FOLLOW, att or 2)
+			--e:SetControlPoint(0, Vector(100,0,0))
+			e:SetControlPoint(1, Vector(1,1,1))
+			e:SetControlPoint(2, Vector(1,0,0))
+			timer.Simple(2, function() e:StopEmissionAndDestroyImmediately() end)
+		else
+			local e = self:CreateParticleEffect(eff or pcf, att or 1, {{attachtype = PATTACH_POINT_FOLLOW, entity = self, offset = Vector(100,10,10)}})
+			--e:AddControlPoint(0, self, PATTACH_POINT_FOLLOW, att or 2)
+			--e:SetControlPoint(0, Vector(100,0,0))
+			--e:SetControlPoint(1, Vector(1,1,1))
+			--e:SetControlPoint(2, Vector(1,0,0))
+			timer.Simple(2, function() e:StopEmissionAndDestroyImmediately() end)
+		end
+	end
+
+	function SWEP:DrawWorldModel()
+		if self:GetHasDoll() then
+			if self:GetShooting() ~= self.ShootHands then
+				self.ShootHands = self:GetShooting()
+				self.Owner:ManipulateBoneAngles(self.Owner:LookupBone("ValveBiped.Bip01_R_Hand"), self.ShootHands and Angle(0,70,0) or Angle(0,0,0))
+			end
+
+			self:DrawModel()
+
+			drawredeyes(self)
+
+			-- Draw the red eyes
+			--[[local power = self:GetEvilScale()
+			if not self.Emitter then
+				self.Emitter = ParticleEmitter(self:GetPos())
+				self.NextParticle = 0
+			end
+			local ct = CurTime()
+			if ct > self.NextParticle then
+				local vel = power*10 -- The power it flies forwards
+
+				for i = 2,3 do
+					local att = self:GetAttachment(i)
+					local p = self.Emitter:Add(particles[math.random(#particles)], att.Pos)
+					p:SetVelocity(att.Ang:Forward()*vel)
+					--p:SetColor(255,255,255)
+					p:SetLifeTime(0)
+					p:SetDieTime(0.25)
+					p:SetStartAlpha(255)
+					p:SetEndAlpha(0)
+					p:SetStartSize(1)
+					p:SetEndSize(0.75)
+					--p:SetRoll(math.random(360))
+					--p:SetRollDelta(math.Rand(5,10))
+					p:SetAirResistance(100)
+					p:SetGravity(gravity)
+				end
+
+				self.NextParticle = ct + particledelay
+			end]]
+		elseif self.LEyeEffect then
+			drawredeyes(self) -- This removes the effect
+		end
+	end
+
+	function SWEP:OnRemove()
+		if self.ShootHands then -- Restore here
+			self.Owner:ManipulateBoneAngles(self.Owner:LookupBone("ValveBiped.Bip01_R_Hand"), Angle(0,0,0))
+		end
+		if self.Emitter then self.Emitter:Finish() end
 	end
 end
 
@@ -327,7 +509,10 @@ function SWEP:PrimaryAttack()
 		self.NextShot = CurTime() + firerate
 		self.Owner:RemoveAmmo(1, ammo_type)
 		self:SendWeaponAnim(ACT_VM_DEPLOYED_FIRE)
-		self.Shooting = true
+		if not self:GetShooting() then
+			self:SetShooting(true)
+			self:SetHoldType("pistol")
+		end
 		if SERVER and self.Owner:GetAmmoCount(ammo_type) <= 0 then self:Reset() end
 	end
 end

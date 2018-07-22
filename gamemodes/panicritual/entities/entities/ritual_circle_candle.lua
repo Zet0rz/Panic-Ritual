@@ -22,7 +22,7 @@ end
 
 function ENT:Initialize()
 	self:SetModel(model)
-	self:SetLit(false)
+	if SERVER then self:SetLit(false) end
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetNotSolid(true)
 end
@@ -32,5 +32,53 @@ function ENT:Complete()
 end
 
 if CLIENT then
-	
+	local particle = "panicritual/particles/fire/ritual_candlefire"
+	local particledelay = 0.05
+	local gravity = Vector(0,0,10)
+	function ENT:Draw()
+		self:DrawModel()
+		if self:GetLit() then
+			local ct = CurTime()
+			if not self.Emitter then
+				self.Emitter = ParticleEmitter(self:GetPos())
+				self.NextParticle = ct
+			end
+
+
+			local pos = self:GetAttachment(1).Pos
+			if ct > self.NextParticle then
+				local particle = self.Emitter:Add(particle, pos)
+				if (particle) then
+					--particle:SetColor(unpack(colors[math.random(#colors)]))
+					particle:SetLifeTime(0)
+					particle:SetDieTime(0.2)
+					particle:SetStartAlpha(255)
+					particle:SetEndAlpha(0)
+					particle:SetStartLength(2)
+					particle:SetEndLength(5)
+					particle:SetStartSize(2)
+					particle:SetEndSize(1)
+					particle:SetGravity(gravity)
+					
+					self.NextParticle = ct + particledelay
+				end
+			end
+
+			local dlight = DynamicLight(self:EntIndex())
+			if (dlight) then
+				dlight.pos = pos
+				dlight.r = 255
+				dlight.g = 150
+				dlight.b = 50
+				dlight.brightness = 2
+				dlight.Decay = 1000
+				dlight.Size = 256
+				dlight.DieTime = CurTime() + 1
+			end
+		end
+	end
+
+	function ENT:OnRemove()
+		if self.Emitter then self.Emitter:Finish() end
+	end
 end
