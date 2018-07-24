@@ -1,0 +1,7 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/player/panicritual/keeper_cloth_tattered_red"
+	"$bumpmap" "models/player/panicritual/keeper_cloth_tattered_n"
+	"$envmapmask" "models/player/panicritual/keeper_cloth_tattered_s"
+	"$model" 1
+}

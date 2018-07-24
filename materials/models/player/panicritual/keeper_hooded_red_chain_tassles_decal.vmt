@@ -1,0 +1,6 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/player/panicritual/keeper_chains"
+	"$bumpmap" "models/player/panicritual/keeper_chains_n"
+	"$model" 1
+}

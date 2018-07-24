@@ -77,7 +77,9 @@ function DEMONS:Loadout()
 	self.Player:Give("ritual_demon_possess")
 end
 
-local demonmodel = "models/player/group01/male_09.mdl" -- Replace this
+local demonmodel = "models/player/keeper_red_hooded.mdl"
+player_manager.AddValidModel("keeper_red_hooded", "models/player/keeper_red_hooded.mdl")
+player_manager.AddValidHands("keeper_red_hooded", "models/player/c_arms_keeper_red_hooded.mdl", 0, "00000000")
 function DEMONS:Init()
 	self.Player:SetModel(demonmodel)
 end

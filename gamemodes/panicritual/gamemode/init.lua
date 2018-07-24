@@ -8,6 +8,7 @@ AddCSLuaFile("animations.lua")
 AddCSLuaFile("antistuck.lua")
 AddCSLuaFile("spectating.lua")
 AddCSLuaFile("screamandshout.lua")
+AddCSLuaFile("cl_hud.lua")
 
 include("shared.lua")
 include("round.lua")

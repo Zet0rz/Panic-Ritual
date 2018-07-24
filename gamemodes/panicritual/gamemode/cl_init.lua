@@ -4,6 +4,7 @@ include("player_meta.lua")
 include("round.lua")
 include("animations.lua")
 include("antistuck.lua")
+include("cl_hud.lua")
 
 --include("demonmaul.lua")
 --include("demonsoulsiphon.lua")

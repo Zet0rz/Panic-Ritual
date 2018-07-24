@@ -1,0 +1,2 @@
+
+print("spectates")
