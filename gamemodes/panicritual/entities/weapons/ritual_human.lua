@@ -32,7 +32,7 @@ local chargeammo = 100
 -- Related to evil scale
 local mindist = 300 -- Distance at which scale is 1
 local maxdist = 1000 -- How far away from mindist scale reaches 0
-local updatedelay = 5 -- How often to run the distance check
+local updatedelay = 2 -- How often to run the distance check
 local approach = 0.5 -- How much the client interpolates last known to recently updated per second (smoothens)
 
 SWEP.Primary.ClipSize		= -1
@@ -178,11 +178,9 @@ if SERVER then
 
 		doll.AmmoCharge = self.Owner:GetAmmoCount(ammo_type)
 
-		local e = EffectData()
-		e:SetOrigin(doll:GetPos())
-		util.Effect("Explosion", e, false, true)
-
 		losedoll(self)
+
+		return doll
 	end
 
 	function SWEP:StartDollCleanse(circle)
@@ -238,17 +236,17 @@ if SERVER then
 	end
 
 	function SWEP:StopDollCleanse(circle)
-		if not circle:AllowCleanse(self) then return end
+		if self.Cleansing == nil or not circle:AllowCleanse(self) then return end
 
 		self.Cleansing = nil
-		self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT)
+		if self:GetHasDoll() then self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT) end
 	end
 
 	function SWEP:CompleteCircle(circle)
 		self:PlayActAndWait(ACT_VM_DEPLOYED_LIFTED_OUT)
 		self.Cleansing = nil
 
-		if self:GetCharged() and self.RitualCircle.Completed then
+		if self:GetCharged() and self.RitualCircle:GetCompleted() then
 			self:Charge() -- Re-cleanse = reload ammo/charge
 		else
 			self.RitualCircle:Progress(circle, self.Owner)
@@ -369,19 +367,33 @@ if CLIENT then
 				self.LEyeEffect = nil
 				self.REyeEffect = nil
 			else
-				self.LEyeEffect = CreateParticleSystem(viewmodel or self, pcf, PATTACH_POINT_FOLLOW, (viewmodel or self):LookupAttachment("doll_l_eye_vm"), Vector(10000,1000,100))
-				self.LEyeEffect:SetControlPoint(1, Vector(1,0.5,1))
-				self.LEyeEffect:SetShouldDraw(not viewmodel)
+				if viewmodel then
+					self.LEyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT_FOLLOW, viewmodel:LookupAttachment("doll_l_eye_vm"), Vector(0,0,0))
+					self.LEyeEffect:SetControlPoint(1, Vector(1,0.5,1))
+					self.LEyeEffect:SetShouldDraw(false)
 
-				self.REyeEffect = CreateParticleSystem(viewmodel or self, pcf, PATTACH_POINT_FOLLOW, (viewmodel or self):LookupAttachment("doll_r_eye_vm"), Vector(-10,0,0))
-				self.REyeEffect:SetControlPoint(1, Vector(1,0.5,1))
-				self.REyeEffect:SetShouldDraw(not viewmodel)
+					self.REyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT_FOLLOW, viewmodel:LookupAttachment("doll_r_eye_vm"), Vector(0,0,0))
+					self.REyeEffect:SetControlPoint(1, Vector(1,0.5,1))
+					self.REyeEffect:SetShouldDraw(false)
+				else
+					self.LEyeEffect = CreateParticleSystem(self, pcf, PATTACH_POINT_FOLLOW, self:LookupAttachment("doll_l_eye"), Vector(0,0,0))
+					self.LEyeEffect:SetControlPoint(1, Vector(1,0.5,1))
+					self.LEyeEffect:SetShouldDraw(true)
+
+					self.REyeEffect = CreateParticleSystem(self, pcf, PATTACH_POINT_FOLLOW, self:LookupAttachment("doll_r_eye"), Vector(0,0,0))
+					self.REyeEffect:SetControlPoint(1, Vector(1,0.5,1))
+					self.REyeEffect:SetShouldDraw(true)
+				end
+				
 			end
 		end
 
 		if self.LEyeEffect then
-			self.LEyeEffect:SetControlPoint(2, Vector(1,0,0)) -- Scale
-			self.REyeEffect:SetControlPoint(2, Vector(1,0,0))
+			local targetpower = self:GetEvilScale()
+			if not self.EvilScale then self.EvilScale = 0 end
+			self.EvilScale = math.Approach(self.EvilScale, targetpower, FrameTime()*approach)
+			self.LEyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0)) -- Scale
+			self.REyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0))
 
 			if viewmodel then
 				self.LEyeEffect:Render()
@@ -415,31 +427,6 @@ if CLIENT then
 	
 	function SWEP:PostDrawViewModel(vm, wep, ply)
 		drawredeyes(self, vm)
-	end
-
-	function SWEP:TestEffect(eff, att)
-		if self:IsCarriedByLocalPlayer() then
-			--[[local e = LocalPlayer():GetViewModel():CreateParticleEffect(eff or pcf, att,
-				{
-					{attachtype = PATTACH_POINT_FOLLOW, entity = LocalPlayer():GetViewModel()},
-					{attachtype = PATTACH_POINT_FOLLOW, entity = LocalPlayer():GetViewModel()},
-				}
-			)]]
-			local e = CreateParticleSystem(LocalPlayer():GetViewModel(), eff, PATTACH_POINT_FOLLOW, 4)
-			e:SetIsViewModelEffect(true)
-			--e:AddControlPoint(0, self, PATTACH_POINT_FOLLOW, att or 2)
-			--e:SetControlPoint(0, Vector(100,0,0))
-			e:SetControlPoint(1, Vector(1,1,1))
-			e:SetControlPoint(2, Vector(1,0,0))
-			timer.Simple(2, function() e:StopEmissionAndDestroyImmediately() end)
-		else
-			local e = self:CreateParticleEffect(eff or pcf, att or 1, {{attachtype = PATTACH_POINT_FOLLOW, entity = self, offset = Vector(100,10,10)}})
-			--e:AddControlPoint(0, self, PATTACH_POINT_FOLLOW, att or 2)
-			--e:SetControlPoint(0, Vector(100,0,0))
-			--e:SetControlPoint(1, Vector(1,1,1))
-			--e:SetControlPoint(2, Vector(1,0,0))
-			timer.Simple(2, function() e:StopEmissionAndDestroyImmediately() end)
-		end
 	end
 
 	function SWEP:DrawWorldModel()
@@ -493,6 +480,187 @@ if CLIENT then
 		end
 		if self.Emitter then self.Emitter:Finish() end
 	end
+
+	local nodoll = Material("panicritual/hud/human_nodoll.png", "noclamp")
+	local doll = Material("panicritual/hud/human_doll.png", "noclamp")
+	local chargedoll = Material("panicritual/hud/human_dollcharge.png", "noclamp")
+
+	local ammobar = Material("panicritual/hud/glyph_bar.png", "noclamp")
+	local backdrop = Material("panicritual/hud/ability_backdrop_square.png", "noclamp")
+
+	local throw = Material("panicritual/hud/human_throw.png", "noclamp")
+	local peek = Material("panicritual/hud/human_peek.png", "noclamp")
+
+	local pad = 50
+	local space = 15
+	local size1 = 150
+	local size2 = 75
+	local barsize = 600
+	local barheight = 80
+	local barlower = 75
+
+	local col_disabled = Color(100,100,100)
+	function SWEP:DrawHUD()
+		local w,h = ScrW(),ScrH()
+
+		surface.SetDrawColor(0,0,0,250)
+		surface.SetMaterial(ammobar)
+		surface.DrawTexturedRect(w - pad - size2 - barsize, h - pad - barlower, barsize, barheight)
+
+		local hasdoll = self:GetHasDoll()
+		local pct = self.Owner:GetAmmoCount(ammo_type)/chargeammo
+		surface.SetDrawColor(0,150,255)
+		surface.DrawTexturedRectUV(w - pad - size2 - barsize*pct, h - pad - barlower, barsize*pct, barheight, 1-pct, 0, 1, 1)
+
+		surface.SetMaterial(backdrop)
+		local posx1 = w - pad - size1
+		local posy1 = h - pad - size1
+		surface.DrawTexturedRect(posx1, posy1, size1, size1)
+
+		-- Throw
+		if hasdoll then
+			surface.SetDrawColor(0,150,255)
+			surface.DrawTexturedRect(posx1 - space - size2, posy1 + 10, size2, size2)
+			draw.SimpleTextOutlined("RMB", "Ritual_HUDFont_Small", posx1 - space - 10, posy1 + size2 + 10, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+		else
+			surface.SetDrawColor(0,75,150)
+			surface.DrawTexturedRect(posx1 - space - size2, posy1 + 10, size2, size2)
+			draw.SimpleTextOutlined("RMB", "Ritual_HUDFont_Small", posx1 - space - 10, posy1 + size2 + 10, col_disabled, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+		end
+		surface.SetDrawColor(255,255,255)
+		surface.SetMaterial(throw)
+		surface.DrawTexturedRect(posx1 - space - size2, posy1 + 10, size2, size2)
+
+		-- Peek
+		if self.Peeking then
+			surface.SetDrawColor(0,150,255)
+		else
+			surface.SetDrawColor(0,75,150)
+		end
+		surface.SetMaterial(backdrop)
+		surface.DrawTexturedRect(posx1 - space*2 - size2*2, posy1 + 10, size2, size2)
+		surface.SetDrawColor(255,255,255)
+		surface.SetMaterial(peek)
+		surface.DrawTexturedRect(posx1 - space*2 - size2*2, posy1 + 10, size2, size2)
+		draw.SimpleTextOutlined("Alt", "Ritual_HUDFont_Small", posx1 - space*2 - size2 - 10, posy1 + size2 + 10, self.CanPeek and color_white or col_disabled, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+
+		if hasdoll then
+			if pct > 0 then
+				surface.SetMaterial(chargedoll)
+				surface.DrawTexturedRect(posx1, posy1, size1, size1)
+				draw.SimpleTextOutlined("LMB", "Ritual_HUDFont_Large", posx1 + size1 - 15, posy1 + size1, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 3, color_black)
+			else
+				surface.SetMaterial(doll)
+				surface.DrawTexturedRect(posx1, posy1, size1, size1)
+			end
+		else
+			surface.SetMaterial(nodoll)
+			surface.DrawTexturedRect(posx1, posy1, size1, size1)
+		end
+	end
+
+	local peekmaxdist = 100
+	local peeksidedist = 20
+	local peekdist = 0.2 -- +20% extra (based on peekmaxdist)
+	local peeklerpspeed = 4
+	local peekang = 70
+	local peekroll = 20	
+	function SWEP:CalcView(ply, pos, ang, fov)
+		local dir = ang:Forward()*peekmaxdist
+		local side = ang:Right()*peeksidedist
+		--[[local trc = util.TraceLine({
+			start = pos,
+			endpos = pos + dir,
+			filter = ply
+		})
+
+		if not trc.Hit then
+			local side = ang:Right()*-peeksidedist
+			local trl = util.TraceLine({
+				start = pos + side,
+				endpos = pos + dir + side,
+				filter = ply
+			})
+			
+			if trl.Hit then
+				self.PeekTargetPos = pos + dir*(trl.Fraction + peekdist)
+				self.PeekTargetAngle = ang + Angle(0,peekang,peekroll)
+				self.CanPeek = true
+			else
+				side = ang:Right()*peeksidedist
+				local trr = util.TraceLine({
+					start = pos + side,
+					endpos = pos + dir + side,
+					filter = ply
+				})
+
+				if trr.Hit then
+					self.PeekTargetPos = pos + dir*(trr.Fraction + peekdist)
+					self.PeekTargetAngle = ang + Angle(0,-peekang,-peekroll)
+					self.CanPeek = true
+				elseif self.CanPeek then
+					self.CanPeek = false
+				end
+			end
+		end]]
+
+		local trside,trpos
+		local trl = util.TraceLine({
+			start = pos,
+			endpos = pos + dir - side,
+			filter = ply 
+		})
+		if trl.Hit then
+			trside = -1
+			trpos = pos + dir*(trl.Fraction + peekdist)
+		else
+			local trr = util.TraceLine({
+				start = pos,
+				endpos = pos + dir + side,
+				filter = ply 
+			})
+			if trr.Hit then
+				trside = 1
+				trpos = pos + dir*(trr.Fraction + peekdist)
+			end
+		end
+
+		if trside then
+			local trc = util.TraceLine({
+				start = pos,
+				endpos = trpos,
+				filter = ply
+			})
+			if not trc.Hit then
+				local trs = util.TraceLine({
+					start = trpos,
+					endpos = trpos + trside*side,
+					filter = ply
+				})
+				if not trs.Hit then
+					self.CanPeek = true
+					self.PeekTargetPos = trpos + trside*side*0.35
+					self.PeekTargetAngle = ang - Angle(0,trside*peekang, trside*peekroll)
+				else
+					self.CanPeek = false
+				end
+			else
+				self.CanPeek = false
+			end
+		else
+			self.CanPeek = false
+		end
+
+		local topeek = self.CanPeek and ply:KeyDown(IN_WALK)
+		if topeek ~= self.Peeking then
+			self.Peeking = topeek
+		end
+		if not self.PeekLerp then self.PeekLerp = 0 end
+		if self.Peeking and self.PeekLerp < 1 then self.PeekLerp = math.Approach(self.PeekLerp, 1, FrameTime()*peeklerpspeed) elseif
+			not self.Peeking and self.PeekLerp > 0 then self.PeekLerp = math.Approach(self.PeekLerp, 0, -FrameTime()*peeklerpspeed) end
+
+		return LerpVector(self.PeekLerp, pos, self.PeekTargetPos or pos), LerpAngle(self.PeekLerp, ang, self.PeekTargetAngle or ang)
+	end
 end
 
 local firerate = 0.05
@@ -514,5 +682,17 @@ function SWEP:PrimaryAttack()
 			self:SetHoldType("pistol")
 		end
 		if SERVER and self.Owner:GetAmmoCount(ammo_type) <= 0 then self:Reset() end
+	end
+end
+
+-- Throw your doll!
+local throwpower = 1000
+function SWEP:SecondaryAttack()
+	if SERVER and self:GetHasDoll() then
+		local doll = self:Drop()
+		local phys = doll:GetPhysicsObject()
+		if IsValid(phys) then
+			phys:ApplyForceCenter(self.Owner:GetAimVector()*throwpower)
+		end
 	end
 end

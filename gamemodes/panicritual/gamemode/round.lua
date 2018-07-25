@@ -12,7 +12,7 @@ local hooks = {
 if SERVER then
 	-- CONFIG VARIABLES
 	local total_circles = 3 -- Demons place 3 circles
-	local total_circle_charge = 2 -- Runners need to bring the doll past 2 other circles
+	local total_circle_charge = 2 -- Runners need to bring the doll past 3 circles - last always itself
 	local required_circles = 2 -- Complete 2 circles to unlock weapons
 	local postroundtime = 5
 

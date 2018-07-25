@@ -1,0 +1,9 @@
+"VertexLitGeneric"
+{
+	$translucent 1
+	$basetexture "panicritual/ritual_circle"
+	$decal 1
+	$vertexcolor 1
+	//"$vertexalpha" 1
+	//$alphatest 1
+}

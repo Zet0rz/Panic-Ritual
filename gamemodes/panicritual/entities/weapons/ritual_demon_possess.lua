@@ -50,6 +50,8 @@ function SWEP:Initialize()
 end
 
 if SERVER then
+	util.AddNetworkString("Ritual_DemonCooldowns")
+
 	function SWEP:PlayActAndWait(act, cycle)
 		local vm = self.Owner:GetViewModel()
 		local seq = vm:SelectWeightedSequence(act)
@@ -101,21 +103,25 @@ function SWEP:PrimaryAttack()
 	--if self.Leaping then return end
 
 	--if self.CirclesToPlace then
-	if true then --GAMEMODE.RoundState == ROUND_PREPARE then
+	if GAMEMODE.RoundState == ROUND_PREPARE then
 		-- Logic for circle placing
 		local b = GAMEMODE:PlaceRitualCircle(self.Owner:GetEyeTrace().HitPos, Angle(0,self.Owner:GetAngles().y,0))
 		if b then self:PlayActAndWait(ACT_VM_THROW) end
 	return end
 
 	local ct = CurTime()
-	if ct < self.NextFade then return end
+	if not self.FadeTime and ct < self.NextFade then return end
 
 	self.Owner:SetFading(true)
 	self.Owner:SetWalkSpeed(fadespeed)
 	self.Owner:SetRunSpeed(fadespeed)
 
 	self.FadeTime = ct + fadetime
-	self.NextFade = ct + fadecooldown
+
+	net.Start("Ritual_DemonCooldowns")
+		net.WriteBool(false) -- Fade
+		net.WriteBool(true) -- Activated
+	net.Send(self.Owner)
 end
 
 -- Secondary attack: Long-range fade leap
@@ -130,6 +136,12 @@ if SERVER then
 			if self.Owner:IsOnGround() or self.Owner:WaterLevel() >= 2 then
 				self.NextLeap = CurTime() + leapcooldown
 				self.Leaping = false
+
+				net.Start("Ritual_DemonCooldowns")
+					net.WriteBool(true) -- Leap
+					net.WriteBool(false) -- Activate cooldown
+				net.Send(self.Owner)
+
 				if not self.FadeTime then
 					self.Owner:SetFading(false)
 				end
@@ -138,6 +150,12 @@ if SERVER then
 			player_manager.RunClass(self.Owner, "ApplyMoveSpeeds")
 			self.Owner:SetFading(false)
 			self.FadeTime = nil
+			self.NextFade = ct + fadecooldown
+
+			net.Start("Ritual_DemonCooldowns")
+				net.WriteBool(false) -- Fade
+				net.WriteBool(false) -- Go cooldown
+			net.Send(self.Owner)
 		end
 
 		if self.LeapCharging then
@@ -170,6 +188,11 @@ function SWEP:Leap(power)
 	self.Leaping = true
 	self.LeapCharging = false
 	self.NextLeap = nil
+
+	net.Start("Ritual_DemonCooldowns")
+		net.WriteBool(true) -- Leap
+		net.WriteBool(true) -- Start leap
+	net.Send(self.Owner)
 end
 
 function SWEP:OnRemove()
@@ -186,7 +209,85 @@ function SWEP:ExitFade(kill)
 	self:PlayActAndWait(IsValid(kill) and ACT_VM_HITCENTER or ACT_VM_MISSCENTER)
 end
 
+if CLIENT then
+	local width = 150
+	local height = 120
+	local pad = 50
+	local space = 25
 
+	local fade = Material("panicritual/hud/demon_fade.png", "noclamp")
+	local leap = Material("panicritual/hud/demon_leap.png", "noclamp")
+	local backdrop = Material("panicritual/hud/ability_backdrop.png", "noclamp")
+	local circles = Material("panicritual/hud/circle_doll.png", "noclamp")
+
+	net.Receive("Ritual_DemonCooldowns", function()
+		local wep = LocalPlayer():GetWeapon("ritual_demon_possess")
+		if IsValid(wep) then
+			local isleap = net.ReadBool()
+			local active = net.ReadBool()
+
+			if isleap then
+				wep.LeapActive = active
+				if not active then wep.LeapCooldown = CurTime() end
+			else
+				wep.FadeActive = active
+				if not active then wep.FadeCooldown = CurTime() end
+			end
+		end
+	end)
+
+	function SWEP:DrawHUD()
+		local w,h = ScrW(),ScrH()
+		surface.SetDrawColor(0,0,0,250)
+		surface.SetMaterial(backdrop)
+		local posx1 = w - pad - width
+		local posx2 = w - pad - width*2 - space
+		local posy = h - pad - height
+		surface.DrawTexturedRect(posx1, posy, width, height)
+		surface.DrawTexturedRect(posx2, posy, width, height)
+
+		-- Fade
+		if self.FadeCooldown then
+			local pct = (CurTime() - self.FadeCooldown)/fadecooldown
+			surface.SetDrawColor(100,0,0)
+			surface.DrawTexturedRectUV(posx2, posy + height*(1-pct), width, height*pct, 0, 1 - pct, 1, 1)
+			if pct >= 1 then self.FadeCooldown = nil end
+		else
+			surface.SetDrawColor(self.FadeActive and 255 or 100,0,0)
+			surface.DrawTexturedRect(posx2, posy, width, height)
+		end
+
+		-- Leap
+		if self.LeapCooldown then
+			local pct = (CurTime() - self.LeapCooldown)/leapcooldown
+			surface.SetDrawColor(100,0,0)
+			surface.DrawTexturedRectUV(posx1, posy + height*(1-pct), width, height*pct, 0, 1 - pct, 1, 1)
+			if pct >= 1 then self.LeapCooldown = nil end
+		else
+			surface.SetDrawColor(self.LeapActive and 255 or 100,0,0)
+			surface.DrawTexturedRect(posx1, posy, width, height)
+		end
+
+		-- Actual icons
+		surface.SetDrawColor(255,255,255)
+		surface.SetMaterial(leap)
+		surface.DrawTexturedRect(posx1, posy, width, height)
+		if GAMEMODE.RoundState == ROUND_PREPARE then
+			surface.SetMaterial(circles)
+			surface.DrawTexturedRect(posx2 + 15, posy, height, height)
+		else
+			surface.SetMaterial(fade)
+			surface.DrawTexturedRect(posx2, posy, width, height)
+		end
+
+		draw.SimpleTextOutlined("LMB", "Ritual_HUDFont", posx2 + width - 20, posy + height, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+		draw.SimpleTextOutlined("RMB", "Ritual_HUDFont", posx1 + width - 20, posy + height, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+	end
+
+	function SWEP:DrawWorldModel()
+
+	end
+end
 
 
 

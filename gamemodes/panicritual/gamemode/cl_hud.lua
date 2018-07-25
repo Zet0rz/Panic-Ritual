@@ -3,7 +3,8 @@ print("hi")
 
 local hide = {
 	["CHudHealth"] = true,
-	["CHudBattery"] = true
+	["CHudBattery"] = true,
+	["CHudAmmo"] = true,
 }
 
 function GM:HUDShouldDraw(name)
@@ -15,6 +16,42 @@ surface.CreateFont("Ritual_HUDFont", {
 	font = "October Crow",
 	extended = false,
 	size = 38,
+	weight = 500,
+	blursize = 0,
+	scanlines = 0,
+	antialias = true,
+	underline = false,
+	italic = false,
+	strikeout = false,
+	symbol = false,
+	rotary = false,
+	shadow = false,
+	additive = false,
+	outline = false,
+})
+
+surface.CreateFont("Ritual_HUDFont_Small", {
+	font = "October Crow",
+	extended = false,
+	size = 24,
+	weight = 500,
+	blursize = 0,
+	scanlines = 0,
+	antialias = true,
+	underline = false,
+	italic = false,
+	strikeout = false,
+	symbol = false,
+	rotary = false,
+	shadow = false,
+	additive = false,
+	outline = false,
+})
+
+surface.CreateFont("Ritual_HUDFont_Large", {
+	font = "October Crow",
+	extended = false,
+	size = 46,
 	weight = 500,
 	blursize = 0,
 	scanlines = 0,
@@ -94,6 +131,25 @@ local padinner = 5
 local iconsize = 150
 local iconsize2 = 75
 local barthickness = 70
+
+-- Demon circle indicators
+local offset = Vector(0,0,10) -- World space offset of drawing
+local candlesize = 50
+local candledist = 60
+local circlesize = 100
+local circle_doll = Material("panicritual/hud/circle_doll.png", "noclamp")
+local circle_nodoll = Material("panicritual/hud/circle_nodoll.png", "noclamp")
+local candle_off = Material("panicritual/hud/candle_off.png", "noclamp")
+local candle_on = Material("panicritual/hud/candle_on.png", "noclamp")
+
+local circle_ents = {}
+for k,v in pairs(ents.FindByClass("ritual_circle")) do -- for Lua refresh
+	circle_ents[v] = true
+end
+hook.Add("OnEntityCreated", "Ritual_CatchCircles", function(ent)
+	if ent:GetClass() == "ritual_circle" then circle_ents[ent] = true end
+end)
+
 function GM:HUDPaint()
 	local w,h = ScrW(), ScrH()
 	local ypad = h - (pad + iconsize)
@@ -121,6 +177,33 @@ function GM:HUDPaint()
 	-- Team Icon
 	surface.SetMaterial(LocalPlayer():IsDemon() and team_demon or team_human)
 	surface.DrawTexturedRect(pad + padinner, ypad + padinner, iconsize - 2*padinner, iconsize - 2*padinner)
+
+	-- Draw demon progress world icons
+	if LocalPlayer():IsDemon() then
+		for k,v in pairs(circle_ents) do
+			if not IsValid(k) then circle_ents[k] = nil else
+				local pos = k:GetPos() + offset
+				local ts = pos:ToScreen()
+				if ts.visible then
+					surface.SetMaterial(k:GetHasDoll() and circle_doll or circle_nodoll)
+					surface.SetDrawColor(255,255,255)
+					surface.DrawTexturedRect(ts.x - circlesize/2, ts.y - circlesize, circlesize, circlesize)
+
+					local req = k:GetRequiredCharge() + 1
+					local charge = k:GetProgress()
+					local ang = (2*math.pi)/req
+					local halfcandle = candlesize/2
+					for i = 1, req do
+						local a = i*ang - math.pi/2
+						surface.SetMaterial(i <= charge and candle_on or candle_off)
+						local x = ts.x + math.cos(a)*(candledist)
+						local y = ts.y - circlesize/2 + math.sin(a)*(candledist)
+						surface.DrawTexturedRect(x - halfcandle, y - halfcandle, candlesize, candlesize)
+					end
+				end
+			end
+		end
+	end
 end
 
 local PLAYER_LINE = {
@@ -310,8 +393,7 @@ local SCORE_BOARD = {
 SCORE_BOARD = vgui.RegisterTable(SCORE_BOARD, "DPanel")
 
 function GM:ScoreboardShow()
-	if true then --not IsValid(g_Scoreboard) then
-		if g_Scoreboard then g_Scoreboard:Remove() end
+	if not IsValid(g_Scoreboard) then
 		g_Scoreboard = vgui.CreateFromTable(SCORE_BOARD)
 	end
 
@@ -321,8 +403,6 @@ function GM:ScoreboardShow()
 		g_Scoreboard:SetKeyboardInputEnabled(false)
 	end
 end
-
-GM:ScoreboardShow()
 
 function GM:ScoreboardHide()
 	if IsValid(g_Scoreboard) then

@@ -13,16 +13,20 @@ ENT.AdminOnly		= false
 ENT.RenderGroup		= RENDERGROUP_BOTH
 
 function ENT:SetupDataTables()
+	self:NetworkVar("Int", 0, "Progress")
+	self:NetworkVar("Int", 1, "RequiredCharge")
 	self:NetworkVar("Bool", 0, "Completed")
+	self:NetworkVar("Bool", 1, "HasDoll")
 end
 
-local model = "models/Gibs/HGIBS.mdl"
+local model = "models/panicritual/ritual_circle.mdl"
 local candledistance = 100 -- Distance from center to candle positions
 function ENT:Initialize()
 	self:SetMoveType(MOVETYPE_NONE)
-	self:SetModel(model)
+	--self:SetModel(model)
 
 	self:SetNotSolid(true)
+	self:DrawShadow(false)
 
 	if SERVER then
 		local size = candledistance --candledistance*0.75
@@ -31,12 +35,13 @@ function ENT:Initialize()
 
 		self:SetTrigger(true)
 
-		self.CurrentProgress = 0
+		self:SetProgress(0)
+		self:SetCompleted(false)
 		self.VisitedCircles = {}
 		self.Candles = {}
 
-		local ang = Angle(0, 360/(self.RequiredCharge + 1), 0)
-		for i = 0, self.RequiredCharge do
+		local ang = Angle(0, 360/(self:GetRequiredCharge()), 0)
+		for i = 0, self:GetRequiredCharge() - 1 do
 			local candle = ents.Create("ritual_circle_candle")
 			local pos = self:GetAngles():Forward()*candledistance
 			pos:Rotate(ang*i)
@@ -46,16 +51,29 @@ function ENT:Initialize()
 
 			self.Candles[i] = candle
 		end
+	else
+		self.Circle = ClientsideModel(model, RENDERGROUP_TRANSLUCENT)
+		self.Circle:SetPos(self:GetPos())
+		self.Circle:SetAngles(self:GetAngles())
+		self.Circle:SetParent(self)
+		self.Circle:SetMoveType(MOVETYPE_NONE)
+		self.Circle:SetNotSolid(true)
+		self:SetRenderBounds(Vector(-candledistance,-candledistance,-candledistance), Vector(candledistance,candledistance,candledistance))
 	end
+end
+
+function ENT:OnRemove()
+	if CLIENT and IsValid(self.Circle) then self.Circle:Remove() end
 end
 
 if SERVER then
 	function ENT:SetProgressRequirement(num)
-		self.RequiredCharge = num
+		self:SetRequiredCharge(num)
 	end
 
 	function ENT:SetDoll(doll)
 		self.Doll = doll -- Could be a weapon, could be a dropped entity
+		self:SetHasDoll(doll.OnRitual)
 	end
 
 	-- Spawn or respawn doll on this circle
@@ -63,17 +81,20 @@ if SERVER then
 		if not IsValid(self.Doll) then
 			local doll = ents.Create("ritual_doll")
 			doll:SetRitualCircle(self)
-			self:SetDoll(doll)
 			doll:Spawn()
+			self:SetDoll(doll)
 		else
 			self.Doll:Reset(true)
 		end
 		
-		self.CurrentProgress = 0
+		if not self:GetCompleted() then self:SetProgress(0) end
 		self.VisitedCircles = {}
+		self:SetHasDoll(true)
 	end
 
 	function ENT:StartTouch(ent)
+		print(ent, "TOUCHED")
+		print(GAMEMODE.RoundState == ROUND_ONGOING and IsValid(ent) and ent:IsPlayer() and ent:IsHuman())
 		if GAMEMODE.RoundState == ROUND_ONGOING and IsValid(ent) and ent:IsPlayer() and ent:IsHuman() then
 			local wep = ent:GetWeapon("ritual_human")
 			if IsValid(wep) and wep:GetHasDoll() then
@@ -93,15 +114,15 @@ if SERVER then
 	end
 
 	function ENT:Progress(circle, caller)
+		local req = self:GetRequiredCharge() - 1
 		if circle == self then
-			if self.CurrentProgress >= self.RequiredCharge then
+			if self:GetProgress() >= req then
 				print("Completed", self)
 				self:Complete(caller)
 			end
-		elseif self.CurrentProgress < self.RequiredCharge and not self.VisitedCircles[circle] then
-			self.CurrentProgress = self.CurrentProgress + 1
-			print("Progressed", self, "to", self.CurrentProgress)
-			local candle = self.Candles[self.CurrentProgress]
+		elseif self:GetProgress() < req and not self.VisitedCircles[circle] then
+			self:SetProgress(self:GetProgress() + 1)
+			local candle = self.Candles[self:GetProgress()]
 			if IsValid(candle) then candle:Complete() end
 			self.VisitedCircles[circle] = true
 			hook.Run("Ritual_CircleProgressed", self, circle, caller)
@@ -110,7 +131,7 @@ if SERVER then
 
 	function ENT:AllowCleanse(doll)
 		local circle = doll.RitualCircle
-		return (circle.CurrentProgress >= circle.RequiredCharge) == (circle == self) and not circle:HasCompletedCircle(self)
+		return (circle:GetProgress() >= circle:GetRequiredCharge() - 1) == (circle == self) and not circle:HasCompletedCircle(self)
 	end
 
 	function ENT:HasCompletedCircle(circle)
@@ -122,19 +143,10 @@ if SERVER then
 		if IsValid(candle) then candle:Complete() end
 
 		self.Doll:Reset(true)
-		self.Completed = true
+		self:SetCompleted(true)
+
+		self:SetProgress(self:GetRequiredCharge())
 
 		hook.Run("Ritual_CircleCompleted", self, caller)
 	end
-end
-
-if CLIENT then
-	function ENT:Draw()
-		self:DrawModel()
-		--render.DrawSphere(self:GetPos(), candledistance, 100, 100, Color(255,255,255))
-	end
-end
-
-function ENT:Think()
-	
 end

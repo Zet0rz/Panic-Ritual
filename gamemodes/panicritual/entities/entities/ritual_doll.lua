@@ -65,6 +65,7 @@ if SERVER then
 		self.OnRitual = true
 		self.Complete = false
 		self.ResetTime = nil
+		self.RitualCircle:SetHasDoll(true)
 
 		self:SetCharged(false)
 	end
@@ -82,15 +83,10 @@ if SERVER then
 	end
 
 	function ENT:Use(activator, caller)
-		print("yay")
 		if IsValid(caller) and caller:IsPlayer() and caller:IsHuman() then
 			local wep = caller:GetWeapon("ritual_human")
-			print(wep, IsValid(wep), wep:GetHasDoll())
 			if IsValid(wep) and not wep:GetHasDoll() then
-				print("hey")
-				print("hi", hook.Run("Ritual_CanPickUpDoll", self, wep, caller))
 				if hook.Run("Ritual_CanPickUpDoll", self, wep, caller) then
-					print("Picked up")
 					self:Pickup(caller)
 				else
 					wep:StartDollCharge(self)
