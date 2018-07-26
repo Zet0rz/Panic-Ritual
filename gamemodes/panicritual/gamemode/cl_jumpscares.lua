@@ -108,10 +108,10 @@ local eye = Material("sprites/redglow1")
 local eyecolor = Color(255,0,0)
 local eyesize = 5
 hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
-	if ply:IsDemon() then
+	if GAMEMODE.RoundState ~= ROUND_PREPARE and ply:IsDemon() then
 		-- Jumpscares
 		local lp = LocalPlayer()
-		if lp:IsHuman() then
+		if lp:IsHuman() and lp:Alive() then
 			local vis, tr = ply:VisibleTo(lp)
 			if vis then
 				local ct = CurTime()

@@ -30,7 +30,7 @@ player_manager.RegisterClass( "player_ritual_base", PLAYER, "player_default" )
 
 local HUMANS = {}
 function HUMANS:SetupDataTables()
-	self.Player:NetworkVar("Entity", 0, "Mauled")
+	
 end
 
 function HUMANS:Loadout()
@@ -80,6 +80,9 @@ end
 local demonmodel = "models/player/keeper_red_hooded.mdl"
 player_manager.AddValidModel("keeper_red_hooded", "models/player/keeper_red_hooded.mdl")
 player_manager.AddValidHands("keeper_red_hooded", "models/player/c_arms_keeper_red_hooded.mdl", 0, "00000000")
+
+local afktime = 60 -- seconds of not pressing any buttons to AFK
+local afkwarn = 30
 function DEMONS:Init()
 	self.Player:SetModel(demonmodel)
 end
@@ -87,6 +90,32 @@ end
 function DEMONS:ApplyMoveSpeeds()
 	self.Player:SetWalkSpeed(self.WalkSpeed)
 	self.Player:SetRunSpeed(self.RunSpeed)
+end
+
+if not ConVarExists("ritual_afktime") then CreateConVar("ritual_afktime", 60, {FCVAR_SERVER_CAN_EXECUTE, FCVAR_ARCHIVE}, "The amount of time with Demons no moving to slay them. Set to 0 to disable.") end
+local time = GetConVar("ritual_afktime")
+
+function DEMONS:StartMove(mv, cmd)
+	if SERVER and self.Player:Alive() then
+		local ct = CurTime()
+		local t = time:GetInt()
+		if t > 0 then
+			if not self.AFKTime then self.AFKTime = CurTime() + t end
+			if not self.AFKWarn then self.AFKWarn = CurTime() + t*0.5 end
+
+			if cmd:GetButtons() > 0 then self.AFKTime = ct + t self.AFKWarn = ct + t*0.5 end
+			if ct > self.AFKTime then
+				self.AFKTime = nil
+				self.Player:SetTeam(TEAM_SPECTATORS)
+				self.Player:Kill()
+				PrintMessage(HUD_PRINTTALK, self.Player:Nick() .. " was slain for being AFK!")
+			end
+			if self.AFKWarn and ct > self.AFKWarn then
+				self.Player:SendHint("afk")
+				self.AFKWarn = nil
+			end
+		end
+	end
 end
 
 player_manager.RegisterClass( "player_ritual_demon", DEMONS, "player_ritual_base" )

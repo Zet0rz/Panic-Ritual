@@ -18,6 +18,11 @@ local headcolors = {
 }
 
 function EFFECT:Init( data )
+	--[[local demononly = data:GetFlags() == 1
+	if demononly and not LocalPlayer():IsDemon() then
+		self:Remove()
+	return end]]
+
 	self.Entity = data:GetEntity()
 	self.Radius = data:GetScale()
 	self.NumTrails = math.Round(data:GetMagnitude())

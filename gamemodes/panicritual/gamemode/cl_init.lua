@@ -1,8 +1,8 @@
 include("shared.lua" )
+include("hints.lua")
 include("cl_jumpscares.lua")
 include("player_meta.lua")
 include("round.lua")
-include("animations.lua")
 include("antistuck.lua")
 include("cl_hud.lua")
 
@@ -11,7 +11,6 @@ include("cl_hud.lua")
 --include("demonpossess.lua")
 
 include("horroraspects.lua")
-include("spectating.lua")
 include("screamandshout.lua")
 
 -- Sound effects used by the gamemode

@@ -58,6 +58,13 @@ function ENT:Initialize()
 		self.Circle:SetParent(self)
 		self.Circle:SetMoveType(MOVETYPE_NONE)
 		self.Circle:SetNotSolid(true)
+		
+		if not LocalPlayer():IsDemon() and GAMEMODE.RoundState == ROUND_PREPARE then
+			self.Circle:SetNoDraw(true)
+		else
+			self:Appear()
+		end
+
 		self:SetRenderBounds(Vector(-candledistance,-candledistance,-candledistance), Vector(candledistance,candledistance,candledistance))
 	end
 end
@@ -149,4 +156,39 @@ if SERVER then
 
 		hook.Run("Ritual_CircleCompleted", self, caller)
 	end
+end
+
+if CLIENT then
+	function ENT:Draw()
+		-- Don't draw the model
+	end
+
+	function ENT:Appear()
+		if IsValid(self.Circle) then
+			self.Circle:SetNoDraw(false)
+		end
+		
+		local e = EffectData()
+		e:SetOrigin(self:GetPos())
+		e:SetAngles(self:GetAngles())
+		e:SetRadius(100) -- Size of bottom circulation
+		e:SetScale(100) -- Height of pillar
+		e:SetMagnitude(10) -- "thickness" of particles (amount/scale)
+		util.Effect("ritual_circlesummon", e, true, true)
+
+		--[[local pcf = CreateParticleSystem(self, "ritual_circle_summon", PATTACH_ABSORIGIN)
+		pcf:SetControlPoint(0, self:GetPos())
+		pcf:SetControlPoint(1, self:GetPos())]]
+	end
+
+	hook.Add("Ritual_RoundBegin", "Ritual_ShowCircles", function()
+		for k,v in pairs(ents.FindByClass("ritual_circle_candle")) do
+			v:SetNoDraw(false)
+		end
+		for k,v in pairs(ents.FindByClass("ritual_circle")) do
+			if IsValid(v.Circle) and v.Circle:GetNoDraw() then
+				v:Appear()
+			end
+		end
+	end)
 end

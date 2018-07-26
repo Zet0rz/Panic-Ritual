@@ -12,27 +12,27 @@ local hooks = {
 if SERVER then
 	-- CONFIG VARIABLES
 	local total_circles = 3 -- Demons place 3 circles
-	local total_circle_charge = 2 -- Runners need to bring the doll past 3 circles - last always itself
+	local total_circle_charge = 3 -- Runners need to bring the doll past 3 circles - last always itself
 	local required_circles = 2 -- Complete 2 circles to unlock weapons
 	local postroundtime = 5
 
 	local function PickWeightedRandomPlayers(players, num)
 		local total = 0
 		for k,v in pairs(players) do
-			total = total + (v.DemonChance or 1)
+			if not v.DemonChance then v.DemonChance = 1 end
+			total = total + v.DemonChance
 		end
 
 		local picked = {}
-		for i = 1, num do
-			local ran = math.random(total - 1)
+		for i = 1, (num or 1) do
+			local ran = math.random(total)
 			local cur = 0
 			for k,v in pairs(players) do
 				if not picked[v] then
-					local chance = (v.DemonChance or 1)
-					cur = cur + chance
+					cur = cur + v.DemonChance
 					if cur >= ran then
 						picked[v] = true
-						total = total - chance
+						total = total - v.DemonChance
 						break
 					end
 				end
@@ -77,12 +77,17 @@ if SERVER then
 		for k,v in pairs(players) do
 			v:StripWeapons()
 			if demons[v] then
-				v:Spawn()
 				v:SetDemon()
+				v:Spawn()
+				v:SetNoCollidePlayers(true)
+				v:DrawShadow(false)
 				v.DemonChance = 1
 			else
-				v:Spawn()
 				v:SetHuman()
+				v:Spawn()
+				v:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+				v:SetNoCollidePlayers(false)
+				v:DrawShadow(true)
 				v.DemonChance = v.DemonChance and v.DemonChance + 1 or 1
 			end
 		end
@@ -95,8 +100,9 @@ if SERVER then
 
 	local function StartMainPhase()
 		for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
-			v:StripWeapon("ritual_demon_circles")
-			v:Give("ritual_demon")
+			local wep = v:GetActiveWeapon()
+			if IsValid(wep) and wep.Fade then wep:Fade(2) end
+			v:DrawShadow(true)
 		end
 
 		for k,v in pairs(circles) do
@@ -106,8 +112,43 @@ if SERVER then
 		GAMEMODE:SetRoundState(ROUND_ONGOING)
 	end
 
+	local mins = Vector(-20,-20,1)
+	local maxs = Vector(20,20,1)
+	local closestdist = 500
 	local function SpaceForCicle(pos, ang)
 		-- Some logic to check if there's space for the circle, and if so, where to place it
+		for k,v in pairs(ents.FindByClass("ritual_circle")) do
+			local d = v:GetPos():Distance(pos)
+			if d < closestdist then return end -- No can do if a circle is closer than this
+		end
+
+		local tr = util.TraceHull({
+			start = pos + Vector(0,0,64),
+			endpos = pos,
+			maxs = maxs,
+			mins = mins,
+			--filter = ent,
+			mask = MASK_NPCWORLDSTATIC,
+		})
+		if tr.Hit then return end
+
+		local reqcharge = total_circle_charge <= 0 and total_circles + total_circle_charge or total_circle_charge
+		local a = Angle(0, 360/reqcharge, 0)
+		for i = 0, reqcharge - 1 do
+			local p = a:Forward()*100
+			p:Rotate(a*i)
+			
+			tr = util.TraceHull({
+				start = p + pos + Vector(0,0,64),
+				endpos = p + pos,
+				maxs = maxs,
+				mins = mins,
+				--filter = ent,
+				mask = MASK_NPCWORLDSTATIC,
+			})
+			if tr.Hit then return end
+		end
+
 		return pos,ang
 	end
 
@@ -120,15 +161,6 @@ if SERVER then
 		circle:SetPos(p)
 		circle:SetAngles(a)
 		circle:Spawn()
-
-		local e = EffectData()
-		e:SetOrigin(p)
-		e:SetAngles(a)
-		e:SetRadius(100) -- Size of bottom circulation
-		e:SetScale(100) -- Height of pillar
-		e:SetMagnitude(10) -- "thickness" of particles (amount/scale)
-		e:SetFlags(TEAM_DEMONS) -- Only show for demons
-		util.Effect("ritual_circlesummon", e, true, true)
 
 		numcircles = numcircles + 1
 		circles[numcircles] = circle
@@ -167,8 +199,15 @@ if SERVER then
 	function GM:GetCompletedCircles() return completedcircles end
 
 	local function CheckTeams()
-		local humans = team.NumPlayers(TEAM_HUMANS) < 1
-		local demons = team.NumPlayers(TEAM_DEMONS) < 1
+		if GAMEMODE.RoundState == ROUND_POST then return end
+
+		local humans,demons = true,true
+		for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
+			if v:Alive() or v.RespawnTime then humans = false break end
+		end
+		for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
+			if v:Alive() or v.RespawnTime then demons = false break end
+		end
 
 		if humans and demons then -- Both under 1
 			GAMEMODE:RoundWin() -- No winners :(
@@ -178,29 +217,119 @@ if SERVER then
 			GAMEMODE:RoundWin(TEAM_DEMONS)
 		end
 	end
-	hook.Add("PostPlayerDeath", "Ritual_RoundDeath", function(ply) CheckTeams() end)
-	hook.Add("EntityRemoved", "Ritual_PlayerDisconnect", function(ply)
-		if ply:IsPlayer() then CheckTeams() end
-	end)
+	
 
 	hook.Add("Ritual_TeamWin", "Ritual_TempWinIndicator", function(t)
 		PrintMessage(HUD_PRINTTALK, t > 0 and team.GetName(t) .. " wins!" or "Everyone's dead!")
 	end)
 
-	hook.Add("PlayerDeath", "Ritual_PlayerToSpectate", function(ply)
-		ply:SetTeam(TEAM_SPECTATORS)
-	end)
-
 	function GM:Ritual_CanPickUpDoll(doll, wep, caller)
 		print("This is run", doll.RitualCircle.Completed, doll:GetCharged())
-		return not doll.RitualCircle.Completed or doll:GetCharged()
+		return not doll.RitualCircle:GetCompleted() or doll:GetCharged()
 	end
 	--[[function GM:Ritual_DollPickedUp(doll, wep, caller)
 		wep:SetCharged(doll.RitualCircle.Completed)
 	end]]
 
 	function GM:Ritual_CanChargeDoll(doll, wep, caller)
-		return doll.RitualCircle.Completed and completedcircles >= required_circles
+		return doll.RitualCircle:GetCompleted() and completedcircles >= required_circles
+	end
+
+	-- Spectating system
+	--[[function GM:PlayerDeath(ply)
+		
+	end]]
+	local respawntime = 3
+	function GM:PostPlayerDeath(ply)
+		if GAMEMODE.RoundState == ROUND_PREPARE then
+			ply.RespawnTime = CurTime() + respawntime
+		else
+			timer.Simple(1, function() ply:Spectate(OBS_MODE_ROAMING) end) -- Timer fixes ragdolls spawning in default pose
+		end
+		CheckTeams()
+	end
+	hook.Add("PlayerSpawn", "Ritual_StopSpectate", function(ply) ply:UnSpectate() end)
+
+	-- Also handle for disconnecting players
+	hook.Add("EntityRemoved", "Ritual_PlayerDisconnect", function(ply)
+		if ply:IsPlayer() then CheckTeams() end
+	end)
+
+	local function CanSpectate(ply, target)
+		return target:Alive() and (target:IsDemon() or target:IsHuman())
+	end
+
+	function GM:PlayerDeathThink(ply)
+		if ply.RespawnTime then
+			if CurTime() >= ply.RespawnTime then
+				ply.RespawnTime = nil
+				ply:Spawn()
+				return true
+			end
+			return
+		end
+
+		-- No respawn on buttons >:(
+		local mode = ply:GetObserverMode() == OBS_MODE_ROAMING
+		if not ply.SpectateTarget then
+			ply.SpectateTarget = team.GetPlayers(TEAM_DEMONS)[1] or team.GetPlayers(TEAM_HUMANS)[1] or ply
+			ply:SpectateEntity(ply.SpectateTarget)
+		end
+		if ply:KeyPressed(IN_JUMP) then
+			ply:SetObserverMode(mode and OBS_MODE_IN_EYE or OBS_MODE_ROAMING)
+		end
+
+		if ply:KeyPressed(IN_ATTACK) or ply:KeyPressed(IN_ATTACK2) then
+			local plys = player.GetAll()
+			local newtarget
+			if ply:KeyPressed(IN_ATTACK) then
+				local foundcur = false
+				for k,v in pairs(plys) do
+					if v == ply.SpectateTarget then
+						foundcur = true
+					elseif CanSpectate(ply, v) then
+						if not newtarget then newtarget = v end -- The first one (if the loop reaches the end)
+						if foundcur then newtarget = v break end -- The one found after finding current one
+					end
+				end
+			else
+				for k,v in pairs(plys) do
+					if v == ply.SpectateTarget then
+						if newtarget then break end -- If we found a valid before this, stop here and return that
+						-- If we didn't, continue until end and used last one found						
+					elseif CanSpectate(ply, v) then
+						newtarget = v
+					end
+				end
+			end
+
+			ply.SpectateTarget = newtarget -- Always set this (just in case it can't spectate one, it can still jump past)
+			if IsValid(newtarget) then ply:SpectateEntity(newtarget) end
+		end
+	end
+
+	function GM:EntityTakeDamage(target, dmg)
+		if target:IsPlayer() then
+			if target:IsDemon() then
+				if dmg:GetInflictor():GetClass() == "ritual_human" then return false end -- Take that damage
+				if not dmg:IsDamageType(DMG_CRUSH) then return true end -- Otherwise only take crush damage (for safety reasons)
+			end
+			if not dmg:IsDamageType(DMG_PARALYZE) then
+				if dmg:GetDamage() > target:Health() then
+					target:DeathScream()
+				else
+					if not target.NextHurtSound or CurTime() >= target.NextHurtSound then
+						target:HurtScream()
+						target.NextHurtSound = CurTime() + 5
+					end
+				end
+			end
+		end
+	end
+
+	function GM:GetFallDamage(ply, speed)
+		if ply:IsDemon() then return 0 end
+		return speed/10
 	end
 
 	util.AddNetworkString("Ritual_DollReset")
@@ -240,4 +369,16 @@ if CLIENT then
 			end
 		end
 	end)
+
+	function GM:CreateClientsideRagdoll(ent, rag)
+		if ent == LocalPlayer() then
+			local phys = rag:GetPhysicsObject()
+			if IsValid(phys) then
+				-- Stop that pesky localplayer ragdoll flinging
+				for i = 0, rag:GetPhysicsObjectCount() - 1 do
+					rag:GetPhysicsObjectNum(i):SetVelocityInstantaneous(Vector(0,0,0))
+				end
+			end
+		end
+	end
 end

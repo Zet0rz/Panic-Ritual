@@ -83,23 +83,6 @@ surface.CreateFont("Ritual_ScrollAlive", {
 	additive = false,
 	outline = false,
 })
-surface.CreateFont("Ritual_ScrollDead", {
-	font = "Haunt AOE",
-	extended = false,
-	size = 38,
-	weight = 500,
-	blursize = 0,
-	scanlines = 0,
-	antialias = true,
-	underline = false,
-	italic = false,
-	strikeout = true,
-	symbol = false,
-	rotary = false,
-	shadow = false,
-	additive = false,
-	outline = false,
-})
 
 surface.CreateFont("Ritual_Demons", {
 	font = "October Crow",
@@ -150,6 +133,48 @@ hook.Add("OnEntityCreated", "Ritual_CatchCircles", function(ent)
 	if ent:GetClass() == "ritual_circle" then circle_ents[ent] = true end
 end)
 
+-- Target ID on humans
+local human_mask = Material("panicritual/hud/human_mask.png", "noclamp")
+local masksize = 75
+local lower = 150
+local targetidfont = "Ritual_HUDFont"
+
+-- Target ID on dolls
+local doll_icon = Material("panicritual/hud/doll_ground.png", "noclamp")
+local dollsize = 100
+local dolllower = 75
+
+local drawresettime = 0
+local nextdrawtime = 0
+local targetplayer
+local targetids = {
+	["player"] = function(ply,w,h,w2,h2)
+		if ply:IsHuman() then
+			local name = ply:Nick()
+			surface.SetFont(targetidfont)
+			local w3,h3 = surface.GetTextSize(name)
+			w3 = w3 + masksize
+
+			surface.SetMaterial(human_mask)
+			surface.DrawTexturedRect(w2 - w3/2, h2 - masksize/2 + lower, masksize, masksize)
+			draw.SimpleTextOutlined(name, targetidfont, w2 - w3/2 + masksize, h2 + lower, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 2, color_black)
+		end
+	end,
+	["ritual_doll"] = function(doll,w,h,w2,h2)
+		surface.SetMaterial(doll_icon)
+		surface.DrawTexturedRect(w2 - dollsize/2, h2 - dollsize/2 + dolllower, dollsize, dollsize)
+		if LocalPlayer():IsHuman() then
+			local wep = LocalPlayer():GetActiveWeapon()
+			if IsValid(wep) and wep:GetClass() == "ritual_human" and not wep:GetHasDoll() then
+				draw.SimpleTextOutlined("E", "Ritual_HUDFont_Large", w2, h2 + dolllower + dollsize - 50, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 2, color_black)
+			end
+		end
+	end,
+}
+
+local targetdelay = 0.35
+local targetident, targetidfunc
+local nexttargetiddraw = 0
 function GM:HUDPaint()
 	local w,h = ScrW(), ScrH()
 	local ypad = h - (pad + iconsize)
@@ -189,7 +214,7 @@ function GM:HUDPaint()
 					surface.SetDrawColor(255,255,255)
 					surface.DrawTexturedRect(ts.x - circlesize/2, ts.y - circlesize, circlesize, circlesize)
 
-					local req = k:GetRequiredCharge() + 1
+					local req = k:GetRequiredCharge()
 					local charge = k:GetProgress()
 					local ang = (2*math.pi)/req
 					local halfcandle = candlesize/2
@@ -203,6 +228,20 @@ function GM:HUDPaint()
 				end
 			end
 		end
+	end
+
+	-- Target ID
+	local tr = LocalPlayer():GetEyeTrace()
+	local ct = CurTime()
+	local enttotarget = IsValid(tr.Entity) and targetids[tr.Entity:GetClass()] and tr.Entity or nil
+	if enttotarget ~= targetident then
+		targetident = tr.Entity
+		targetidfunc = targetids[tr.Entity:GetClass()]
+		nexttargetiddraw = ct + targetdelay
+	end
+	if targetident and ct >= nexttargetiddraw then
+		local w2,h2 = w/2, h/2
+		targetidfunc(targetident,w,h,w2,h2)
 	end
 end
 
