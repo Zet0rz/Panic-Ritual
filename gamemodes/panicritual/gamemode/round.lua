@@ -66,9 +66,8 @@ if SERVER then
 
 	function GM:RestartRound()
 		hook.Remove("Think", "Ritual_PostRound") -- Just in case of manual restart
-		self:SetRoundState(ROUND_INIT)
-
 		game.CleanUpMap()
+		self:SetRoundState(ROUND_INIT)
 
 		local players = player.GetAll()
 		local demons = PickWeightedRandomPlayers(players, 1) -- Pick 1 weighted random demon
@@ -92,6 +91,9 @@ if SERVER then
 			end
 		end
 
+		self:SendHint("human_spawn", team.GetPlayers(TEAM_HUMANS))
+		self:SendHint("demon_spawn", team.GetPlayers(TEAM_DEMONS))
+
 		numcircles = 0
 		completedcircles = 0
 		circles = {}
@@ -112,14 +114,19 @@ if SERVER then
 		GAMEMODE:SetRoundState(ROUND_ONGOING)
 	end
 
-	local mins = Vector(-20,-20,1)
-	local maxs = Vector(20,20,1)
+	local mins = Vector(-10,-10,1)
+	local maxs = Vector(10,10,1)
 	local closestdist = 500
-	local function SpaceForCicle(pos, ang)
+	local function SpaceForCicle(pos, ang, ply)
 		-- Some logic to check if there's space for the circle, and if so, where to place it
 		for k,v in pairs(ents.FindByClass("ritual_circle")) do
-			local d = v:GetPos():Distance(pos)
-			if d < closestdist then return end -- No can do if a circle is closer than this
+			local p1, p2 = v:GetPos(), Vector(pos)
+			p1.z = p1.z*4 -- Count vertical distance 4 times larger
+			p2.z = p2.z*4
+			local d = p1:Distance(p2)
+			if d < closestdist then
+				if IsValid(ply) then ply:SendHint("demon_circle_tooclose") end
+			return end -- No can do if a circle is closer than this
 		end
 
 		local tr = util.TraceHull({
@@ -130,30 +137,35 @@ if SERVER then
 			--filter = ent,
 			mask = MASK_NPCWORLDSTATIC,
 		})
-		if tr.Hit then return end
+		if tr.Hit then
+			if IsValid(ply) then ply:SendHint("demon_circle_nospace") end
+		return end
 
-		local reqcharge = total_circle_charge <= 0 and total_circles + total_circle_charge or total_circle_charge
+		-- Enable this to enable candle space check
+		--[[local reqcharge = total_circle_charge <= 0 and total_circles + total_circle_charge or total_circle_charge
 		local a = Angle(0, 360/reqcharge, 0)
 		for i = 0, reqcharge - 1 do
 			local p = a:Forward()*100
 			p:Rotate(a*i)
 			
 			tr = util.TraceHull({
-				start = p + pos + Vector(0,0,64),
+				start = p + pos + Vector(0,0,30),
 				endpos = p + pos,
 				maxs = maxs,
 				mins = mins,
 				--filter = ent,
 				mask = MASK_NPCWORLDSTATIC,
 			})
-			if tr.Hit then return end
-		end
+			if tr.Hit then
+				if IsValid(ply) then ply:SendHint("demon_circle_nospace") end
+			return end
+		end]]
 
 		return pos,ang
 	end
 
-	function GM:PlaceRitualCircle(pos, ang)
-		local p,a = SpaceForCicle(pos,ang)
+	function GM:PlaceRitualCircle(pos, ang, ply)
+		local p,a = SpaceForCicle(pos,ang, ply)
 		if not p then return end
 
 		local circle = ents.Create("ritual_circle")
@@ -195,6 +207,11 @@ if SERVER then
 
 	function GM:Ritual_CircleCompleted(circle, ply)
 		completedcircles = completedcircles + 1
+		if completedcircles >= required_circles then
+			for k,v in pairs(circles) do
+				if v:GetCompleted() then v:SetChargeable(true) end
+			end
+		end
 	end
 	function GM:GetCompletedCircles() return completedcircles end
 
@@ -224,7 +241,7 @@ if SERVER then
 	end)
 
 	function GM:Ritual_CanPickUpDoll(doll, wep, caller)
-		print("This is run", doll.RitualCircle.Completed, doll:GetCharged())
+		--print("This is run", doll.RitualCircle.Completed, doll:GetCharged())
 		return not doll.RitualCircle:GetCompleted() or doll:GetCharged()
 	end
 	--[[function GM:Ritual_DollPickedUp(doll, wep, caller)
@@ -232,7 +249,11 @@ if SERVER then
 	end]]
 
 	function GM:Ritual_CanChargeDoll(doll, wep, caller)
-		return doll.RitualCircle:GetCompleted() and completedcircles >= required_circles
+		return doll.RitualCircle:GetCompleted() and doll.RitualCircle:GetChargeable()
+	end
+
+	function GM:Ritual_AllowChargeable(circle)
+		return circle:GetCompleted() and completedcircles >= required_circles
 	end
 
 	-- Spectating system
@@ -244,7 +265,7 @@ if SERVER then
 		if GAMEMODE.RoundState == ROUND_PREPARE then
 			ply.RespawnTime = CurTime() + respawntime
 		else
-			timer.Simple(1, function() ply:Spectate(OBS_MODE_ROAMING) end) -- Timer fixes ragdolls spawning in default pose
+			timer.Simple(3, function() ply:Spectate(OBS_MODE_ROAMING) end) -- Timer fixes ragdolls spawning in default pose
 		end
 		CheckTeams()
 	end
@@ -253,6 +274,15 @@ if SERVER then
 	-- Also handle for disconnecting players
 	hook.Add("EntityRemoved", "Ritual_PlayerDisconnect", function(ply)
 		if ply:IsPlayer() then CheckTeams() end
+	end)
+
+	hook.Add("DoPlayerDeath", "Ritual_PlayerDropDoll", function(ply)
+		if ply:IsHuman() then
+			local wep = ply:GetWeapon("ritual_human")
+			if IsValid(wep) and wep:GetHasDoll() then
+				wep:Drop()
+			end
+		end
 	end)
 
 	local function CanSpectate(ply, target)
@@ -365,6 +395,7 @@ if CLIENT then
 				e:SetOrigin(Vector(0,0,10))
 				e:SetScale(2)
 				e:SetRadius(20)
+				e:SetFlags(2)
 				util.Effect("ritual_dollreset", e, true, true)
 			end
 		end

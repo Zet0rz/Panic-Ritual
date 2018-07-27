@@ -1,0 +1,7 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/player/panicritual/keeper_metal"
+	"$bumpmap" "models/player/panicritual/keeper_metal_n"
+	"$normalmapalphaenvmapmask" 1
+	"$model" 1
+}

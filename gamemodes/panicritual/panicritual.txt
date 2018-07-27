@@ -4,6 +4,7 @@
 	"title"		"Panic Ritual"
 	"maps"		""
 	"menusystem"	"1"
+	"workshopid"	"1455501072"
 	
 		"settings"
 	{

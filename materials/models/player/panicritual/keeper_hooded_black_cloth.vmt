@@ -2,6 +2,6 @@
 {
 	"$basetexture" "models/player/panicritual/keeper_cloth_black"
 	"$bumpmap" "models/player/panicritual/keeper_cloth_n"
-	"$envmapmask" "models/player/panicritual/keeper_cloth_s"
+	"$normalmapalphaenvmapmask" 1
 	"$model" 1
 }

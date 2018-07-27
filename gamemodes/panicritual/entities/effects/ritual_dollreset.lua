@@ -31,22 +31,24 @@ local emitdelay = 0.05
 local risetime = 0.2
 local risefadeout = 0.5
 
-local soundeffect = Sound("sound/ambient/fire/mtov_flame2.wav")
+local soundeffect = Sound("sound/panicritual/mtov_flame2.wav")
 
 function EFFECT:Init( data )
 	self.Ent = data:GetEntity()
 	if self.Ent:IsWeapon() and self.Ent:IsCarriedByLocalPlayer() then self.Ent = LocalPlayer():GetViewModel() end
 
 	local attachment = data:GetAttachment()
+	local flags = data:GetFlags()
 	if attachment > 0 then
 		self.Attachment = attachment
-	elseif data:GetFlags() == 1 then
+	elseif flags == 1 or flags == 3 then
 		self.RelativeToView = true
 	end
 
 	self.StartPos = data:GetStart()
 	self.EndPos = data:GetOrigin()
-	self.Norm = (self.EndPos - self.StartPos):GetNormal()
+	--self.Norm = (self.EndPos - self.StartPos):GetNormal()
+	self.Norm = ((flags == 2 or flags == 3) and self.StartPos - self.EndPos or self.EndPos - self.StartPos):GetNormal()
 	self.Radius = data:GetRadius()
 	self.Scatter = data:GetScale()
 

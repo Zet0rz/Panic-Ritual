@@ -163,7 +163,7 @@ if CLIENT then
 
 			local col = Color(255,100,100)
 			function panel.Header:Paint(w,h)
-				draw.SimpleTextOutlined(str, "Ritual_HUDFont", 0, 0, col, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 2, color_black)
+				draw.SimpleTextOutlined(str, "Ritual_HUDFont", w/2, 0, col, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 2, color_black)
 			end
 		end
 
@@ -182,7 +182,7 @@ if CLIENT then
 
 			local col = Color(255,150,150)
 			function panel.Text:Paint(w,h)
-				draw.SimpleTextOutlined(str, "Ritual_ScrollAlive", 0, 0, col, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 2, color_black)
+				draw.SimpleTextOutlined(str, "Ritual_ScrollAlive", w/2, 0, col, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 2, color_black)
 			end
 		end
 		
@@ -198,7 +198,7 @@ if CLIENT then
 			width = width + size
 		end
 
-		panel:SetSize(width, height)
+		panel:SetSize(width + 10, height)
 
 		panel:AlphaTo(0, tbl.Fade or 2, tbl.Time or 5)
 		panel.Think = function(self)
@@ -253,7 +253,7 @@ if CLIENT then
 
 	net.Receive("Ritual_Hint", function()
 		local id = net.ReadString()
-		if id then
+		if id and IsValid(LocalPlayer()) then
 			LocalPlayer():SendHint(id)
 		end
 	end)
@@ -302,13 +302,19 @@ GM:AddHint("demon_spawn", {
 })
 
 GM:AddHint("demon_circle_nospace", {
-	--Text = nil,
 	--Icon = "panicritual/hud/team_demon.png",
-	Header = {
-		"Not enough space",
-	},
+	Header = "Not enough space",
+	Text = "There must be space for all candles and the doll.",
 	Position = HINT_CENTER,
-	Time = 1,
+	Time = 3,
+	Fade = 1,
+})
+
+GM:AddHint("demon_circle_tooclose", {
+	Header = "Too close to another circle",
+	Text = "Circles must be at least 500 units away from each other.",
+	Position = HINT_CENTER,
+	Time = 3,
 	Fade = 1,
 })
 

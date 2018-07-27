@@ -128,7 +128,9 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 					end
 					if index then
 						local sounds = jumpscares.sounds[index]
-						surface.PlaySound(sounds[math.random(#sounds)])
+						local s = sounds[math.random(#sounds)]
+						surface.PlaySound(s)
+						surface.PlaySound(s) -- Play it twice for a bit more 'oomph'
 					end
 				end
 

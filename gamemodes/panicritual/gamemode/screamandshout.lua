@@ -1,7 +1,7 @@
 
 print("screams")
 
-local PLAYER = FindPLAYERTable("Player")
+local PLAYER = FindMetaTable("Player")
 
 local malesoundpack = {
 	RoundBegin = {

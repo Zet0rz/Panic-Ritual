@@ -17,21 +17,19 @@ include("player_meta.lua")
 include("antistuck.lua")
 include("screamandshout.lua")
 
--- Demon maul, pounce attack
---AddCSLuaFile("demonmaul.lua")
---include("demonmaul.lua")
-
--- Demon soul siphon, walked attack
---AddCSLuaFile("demonsoulsiphon.lua")
---include("demonsoulsiphon.lua")
-
 AddCSLuaFile("horroraspects.lua")
 include("horroraspects.lua")
+
+--resource.AddWorkshop("1455501072")
+resource.AddFile("resource/fonts/octobercrow.ttf")
+resource.AddFile("resource/fonts/hauntaoe.ttf")
 
 function GM:PlayerInitialSpawn(ply)
 	player_manager.SetPlayerClass(ply, "player_ritual_base")
 	--ply:SetShouldServerRagdoll(true)
-	self:RestartRound()
+	if player.GetCount() == 2 then
+		self:RestartRound()
+	end
 end
 
 function GM:PlayerSpawn(ply)

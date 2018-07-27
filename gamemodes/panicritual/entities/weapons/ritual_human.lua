@@ -137,7 +137,7 @@ if SERVER then
 
 		self.Owner:SetAmmo(0, ammo_type)
 		self.Charging = nil
-		if self.Cleansing then SWEP:StopDollCleanse(self.Cleansing) end
+		if self.Cleansing then self:StopDollCleanse(self.Cleansing) end
 
 		UpdateAnimations(self)
 	end
@@ -220,15 +220,41 @@ if SERVER then
 		self.CleanseLoop = ct
 		self.CleanseFinish = ct + cleansetime
 		self.Charging = doll
+
+		--[[local e = EffectData()
+		e:SetEntity(self)
+		e:SetOrigin(doll:GetPos())
+		e:SetStart(doll.RitualCircle:GetPos())
+		e:SetScale(5)
+		e:SetMagnitude(1)
+		e:SetRadius(100)
+		e:SetFlags(0)
+		util.Effect("ritual_dollcharge",e,true,true)]]
 	end
 
 	function SWEP:StopDollCharge(doll)
+		if not self.Charging then return end
+		-- Kill the effect
+		--[[local e = EffectData()
+		e:SetEntity(self)
+		e:SetFlags(1) -- Kills the effect
+		util.Effect("ritual_dollcharge",e,true,true)]]
+
 		self.Charging = nil
 		--self.NextIdleTime = nil
 		UpdateAnimations(self)
 	end
 
 	function SWEP:CompleteDollCharge(doll)
+		if IsValid(doll.RitualCircle) then
+			local e = EffectData()
+			e:SetOrigin(doll.RitualCircle:GetPos())
+			e:SetMagnitude(200)
+			e:SetRadius(100)
+			e:SetScale(1)
+			util.Effect("ritual_dollchargebeam",e,true,true)
+		end
+
 		self.Charging = nil
 		doll:Pickup(self.Owner)
 		self:Charge()
@@ -251,6 +277,10 @@ if SERVER then
 		else
 			self.RitualCircle:Progress(circle, self.Owner)
 		end
+
+		net.Start("ritual_doll_cleanse")
+			net.WriteEntity(self)
+		net.Broadcast()
 	end
 
 	function SWEP:Charge()
@@ -345,20 +375,31 @@ end
 
 if CLIENT then
 	local cleanseloop
+	local cleansepcf = "ritual_doll_cleanse"
 	net.Receive("ritual_doll_cleanse", function()
-		local b = net.ReadBool()
+		local doll = net.ReadEntity()
+		local viewmodel
+		if doll:IsWeapon() and doll:IsCarriedByLocalPlayer() then
+			viewmodel = LocalPlayer():GetViewModel()
+		end
+		doll.DollCleansedEffect = CreateParticleSystem(viewmodel or doll, cleansepcf, PATTACH_POINT, (viewmodel or doll):LookupAttachment("doll_body"), Vector(0,0,0))
+		doll.DollCleansedEffect:SetControlPoint(0, (viewmodel or doll):GetBonePosition((viewmodel or doll):LookupBone("Doll")))
+		doll.DollCleansedEffect:SetControlPoint(1, Vector(0.7,1,1))
+		doll.DollCleansedEffect:SetShouldDraw(not viewmodel)
+		doll.DollCleansedEffect:SetIsViewModelEffect(not not viewmodel)
 	end)
 
 	-- Function run to draw the red eyes depending on distance to demon(s)
 	-- Runs both on world model and viewmodel
-	local particledelay = 0.05
+	--[[local particledelay = 0.05
 	local gravity = Vector(0,0,100)
 	local particles = {
 		"panicritual/particles/fire/ritual_fire_cloud1",
 		"panicritual/particles/fire/ritual_fire_cloud2",
-	}
+	}]]
 	local pcf = "ritual_doll_burn_eyes"
-	local function drawredeyes(self, viewmodel)
+	local function drawdolleffects(self, viewmodel)
+		-- Create and remove burning eye effects
 		if not self.LEyeEffect == self:GetHasDoll() then
 			if self.LEyeEffect then
 				self.LEyeEffect:StopEmission(false,true)
@@ -368,11 +409,11 @@ if CLIENT then
 				self.REyeEffect = nil
 			else
 				if viewmodel then
-					self.LEyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT_FOLLOW, viewmodel:LookupAttachment("doll_l_eye_vm"), Vector(0,0,0))
+					self.LEyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT, viewmodel:LookupAttachment("doll_l_eye_vm"), Vector(0,0,0))
 					self.LEyeEffect:SetControlPoint(1, Vector(1,0.5,1))
 					self.LEyeEffect:SetShouldDraw(false)
 
-					self.REyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT_FOLLOW, viewmodel:LookupAttachment("doll_r_eye_vm"), Vector(0,0,0))
+					self.REyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT, viewmodel:LookupAttachment("doll_r_eye_vm"), Vector(0,0,0))
 					self.REyeEffect:SetControlPoint(1, Vector(1,0.5,1))
 					self.REyeEffect:SetShouldDraw(false)
 				else
@@ -388,17 +429,43 @@ if CLIENT then
 			end
 		end
 
+		-- Render burning eye effects
 		if self.LEyeEffect then
 			local targetpower = self:GetEvilScale()
 			if not self.EvilScale then self.EvilScale = 0 end
 			self.EvilScale = math.Approach(self.EvilScale, targetpower, FrameTime()*approach)
-			self.LEyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0)) -- Scale
-			self.REyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0))
+			self.LEyeEffect:SetControlPoint(2, Vector(1,0,0)) -- Scale
+			self.REyeEffect:SetControlPoint(2, Vector(1,0,0))
 
 			if viewmodel then
+				local pos,ang = viewmodel:GetBonePosition(viewmodel:LookupBone("Doll"))
+				local wpos,wang = LocalToWorld(Vector(-1.2,4,-3), Angle(130,0,-80), pos, ang)
+				local f,r,u = wang:Forward(),wang:Right(),wang:Up()
+
+				local repos = wpos + r*0.4
+				local lepos = wpos + r*-1.1
+
+				self.LEyeEffect:SetControlPoint(0, lepos)
+				self.LEyeEffect:SetControlPointOrientation(0,f,r,u)
+				self.REyeEffect:SetControlPoint(0, repos)
+				self.REyeEffect:SetControlPointOrientation(0,f,r,u)
 				self.LEyeEffect:Render()
 				self.REyeEffect:Render()
+
+				--[[[render.SetColorMaterial()
+				render.DrawBeam(pos,pos + wang:Forward()*10,1,0,1,Color(255,0,0))
+				render.DrawBeam(pos,pos + wang:Right()*10,1,0,1,Color(0,255,0))
+				render.DrawBeam(pos,pos + wang:Up()*10,1,0,1,Color(0,0,255))
+
+				--render.DrawBeam(pos,repos,1,0,1,Color(0,255,255))
+				render.DrawBeam(pos,wpos,1,0,1,Color(255,0,255))]]
 			end
+		end
+
+		-- Render doll cleanse effects
+		if self.DollCleansedEffect then
+			self.DollCleansedEffect:Render()
+			--if self.DollCleansedEffect:IsFinished() then print("done") end
 		end
 		--[[if viewmodel then
 			--PrintTable(viewmodel:GetAttachments())
@@ -414,11 +481,28 @@ if CLIENT then
 
 			--render.SetMaterial()
 		end]]
+
+		if not self.ChargedEffect == self:GetCharged() then
+			if self.ChargedEffect then
+				self.ChargedEffect:StopEmission(false, true)
+				self.ChargedEffect = nil
+			else
+				self.ChargedEffect = CreateParticleSystem(viewmodel or self, "ritual_doll_charged", PATTACH_POINT_FOLLOW, (viewmodel or self):GetAttachment((viewmodel or self):LookupAttachment("doll_l_eye_vm")))
+				self.ChargedEffect:SetIsViewModelEffect(not not viewmodel)
+				self.ChargedEffect:SetShouldDraw(not viewmodel)
+				self.ChargedEffect:SetControlPoint(1, Vector(0.7,1,1))
+				self.ChargedEffect:SetControlPoint(2, Vector(1,0,0))
+			end
+		end
+
+		if viewmodel and self.ChargedEffect then
+			--self.ChargedEffect:Render()
+		end
 	end
 
 	function SWEP:GetViewModelPosition(pos,ang)
 		--return pos + ang:Forward()*70, ang + Angle(0,CurTime()%360*30,0)
-		--return pos + ang:Right()*10 + ang:Forward()*10, ang + Angle(0,90,0)
+		--return pos + ang:Right()*10 + ang:Forward()*30, ang + Angle(0,90,0)
 	end
 
 	function SWEP:CalcViewModelView(vm, oldPos, oldAng, pos, ang)
@@ -426,7 +510,7 @@ if CLIENT then
 	end
 	
 	function SWEP:PostDrawViewModel(vm, wep, ply)
-		drawredeyes(self, vm)
+		drawdolleffects(self, vm)
 	end
 
 	function SWEP:DrawWorldModel()
@@ -438,7 +522,7 @@ if CLIENT then
 
 			self:DrawModel()
 
-			drawredeyes(self)
+			drawdolleffects(self)
 
 			-- Draw the red eyes
 			--[[local power = self:GetEvilScale()
@@ -470,7 +554,7 @@ if CLIENT then
 				self.NextParticle = ct + particledelay
 			end]]
 		elseif self.LEyeEffect then
-			drawredeyes(self) -- This removes the effect
+			drawdolleffects(self) -- This removes the effect
 		end
 	end
 
@@ -562,7 +646,7 @@ if CLIENT then
 	local peekmaxdist = 100
 	local peeksidedist = 20
 	local peekdist = 0.2 -- +20% extra (based on peekmaxdist)
-	local peeklerpspeed = 4
+	local peeklerpspeed = 3
 	local peekang = 70
 	local peekroll = 20	
 	function SWEP:CalcView(ply, pos, ang, fov)
@@ -694,5 +778,6 @@ function SWEP:SecondaryAttack()
 		if IsValid(phys) then
 			phys:ApplyForceCenter(self.Owner:GetAimVector()*throwpower)
 		end
+		self:PlayActAndWait(ACT_VM_THROW)
 	end
 end

@@ -1,7 +1,0 @@
-"VertexLitGeneric"
-{
-	"$basetexture" "models/player/panicritual/keeper_metal"
-	"$bumpmap" "models/player/panicritual/keeper_metal_n"
-	"$envmapmask" "models/player/panicritual/keeper_metal_s"
-	"$model" 1
-}

@@ -35,15 +35,15 @@ if CLIENT then
 	local fogmaxrange = 5000
 	local fadesound = Sound("panicritual/roundstart.wav")
 	local ccRound = {
-		["$pp_colour_addr"] = 0.05,
+		["$pp_colour_addr"] = 0.02,
 		["$pp_colour_addg"] = 0,
-		["$pp_colour_addb"] = 0.05,
-		["$pp_colour_brightness"] = -0.03,
-		["$pp_colour_contrast"] = 0.5,
-		["$pp_colour_colour"] = 0.75,
-		["$pp_colour_mulr"] = 1.5,
+		["$pp_colour_addb"] = 0,
+		["$pp_colour_brightness"] = 0,
+		["$pp_colour_contrast"] = 1,
+		["$pp_colour_colour"] = 1,
+		["$pp_colour_mulr"] = 1,
 		["$pp_colour_mulg"] = 1,
-		["$pp_colour_mulb"] = 1.5
+		["$pp_colour_mulb"] = 1
 	}
 
 	local skytopcolor = Vector(1,1,1)
@@ -105,7 +105,7 @@ if CLIENT then
 		render.FogColor(15,0,0)
 		render.FogEnd(fogrange)
 		if LocalPlayer():IsDemon() then
-			render.FogStart(-100)
+			render.FogStart(-1000)
 			render.FogMaxDensity(fogdensity*0.99)
 		else
 			render.FogStart(-1000)

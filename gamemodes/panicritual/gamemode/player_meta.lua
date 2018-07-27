@@ -3,12 +3,13 @@ local PLAYER = FindMetaTable("Player")
 if SERVER then
 	function PLAYER:SetHuman()
 		self:SetTeam(TEAM_HUMANS)
+		self:AllowFlashlight(true)
 		player_manager.SetPlayerClass(self, "player_ritual_human")
 	end
 
 	function PLAYER:SetDemon()
 		self:SetTeam(TEAM_DEMONS)
-		print("Set to demon")
+		self:AllowFlashlight(false)
 		player_manager.SetPlayerClass(self, "player_ritual_demon")
 	end
 end

@@ -6,10 +6,6 @@ include("round.lua")
 include("antistuck.lua")
 include("cl_hud.lua")
 
---include("demonmaul.lua")
---include("demonsoulsiphon.lua")
---include("demonpossess.lua")
-
 include("horroraspects.lua")
 include("screamandshout.lua")
 

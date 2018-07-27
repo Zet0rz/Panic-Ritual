@@ -5,6 +5,7 @@ local hide = {
 	["CHudHealth"] = true,
 	["CHudBattery"] = true,
 	["CHudAmmo"] = true,
+	["CHudWeaponSelection"] = true,
 }
 
 function GM:HUDShouldDraw(name)
@@ -197,7 +198,10 @@ function GM:HUDPaint()
 	-- Human Contract
 	surface.SetMaterial(human_contract)
 	surface.DrawTexturedRect(pad + pad2 + iconsize, ypad + pad2, iconsize2, iconsize2)
-	draw.SimpleTextOutlined("x"..team.NumPlayers(TEAM_HUMANS), "Ritual_HUDFont", pad + pad2 + iconsize + iconsize2, ypad + pad2 + iconsize2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+	local humans = team.GetPlayers(TEAM_HUMANS)
+	local alive = 0
+	for k,v in pairs(humans) do if v:Alive() then alive = alive + 1 end end
+	draw.SimpleTextOutlined("x"..alive, "Ritual_HUDFont", pad + pad2 + iconsize + iconsize2, ypad + pad2 + iconsize2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
 
 	-- Team Icon
 	surface.SetMaterial(LocalPlayer():IsDemon() and team_demon or team_human)

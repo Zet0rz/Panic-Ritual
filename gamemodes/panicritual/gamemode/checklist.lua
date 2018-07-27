@@ -78,7 +78,7 @@
 	✓	Demon AFK system
 	-	Too long round handling (Demon benefit? Just end round?)
 	✓	Ritual circles invisible during pre-round
-		-	Candles too
+		✓	Candles too
 	✓	Demons invisible during pre-round
 	✓	Demons no collide during preround
 	✓	Demons exit preround fade (to kill anyone inside them)
@@ -86,27 +86,36 @@
 	✓	Demon movement during preround (make sure circles can be reached by humans)
 	✓	Demon damage control (only damage by world or doll weapon)
 	✓	Fall damage calculation
-	-	Doll charge effect
-	-	Doll cleanse viewmodel effect
-	-	Circle completed effect
-	-	Louder jumpscare sounds
+	*	Doll charge effect
+	✓	Doll cleanse viewmodel effect
+	✓	Circle completed effect
+	✓	Louder jumpscare sounds
 	✓	Scream and Shout
 		-	Demon sounds
 		-	Play round begin logic
-	-	Proper red eye drawing (over fog)
+	/	Proper red eye drawing (over fog)
+	/	Custom flashlights (brighter to counter color correction)
+		/	Demon "night vision" flashlight?
 	-	Adjust color correction
+	-	Sky nighttime/color
 	✓	Hints/Guides
-	-	Demon viewmodel adjustments
-		-	Idle animation improvements (finger anim + slower speed)
-		-	Fix idle animations on demon weapon viewmodel
-	-	Human viewmodel adjustments
-		-	Throw anim?
-		-	Slightly faster sprint anim
-	-	Fix ritual circle model clipping?
+	✓	Demon viewmodel adjustments
+		✓	Idle animation improvements (finger anim + slower speed)
+		✓	Fix idle animations on demon weapon viewmodel
+	✓	Human viewmodel adjustments
+		✓	Throw anim?
+		✓	Slightly faster sprint anim
+	?	Fix ritual circle model clipping?
 	✓	Suicide respawn during preround
 	/	Demon respawn conditions?
-	-	Fix circle summon particle effect
+	✓	Fix circle summon particle effect
 			Appears to be same Control point (1) for color and swirl center
+	✓	Show hints at round begin
+	-	Make hints able to have a "max shown" option (or a disable console command?)
+	✓	Keeper player model global playermodel
+	✓	Dying with doll drops it
+	-	Dropped doll reset burn effect
+	✓	Molotov fire sound effect
 
 	POTENTIAL
 	-	Shiver horror aspect
@@ -115,30 +124,41 @@
 	-	Round over music
 	-	Demon sounds
 	-	Human spawn voicelines
-	-	Additional particle effects?
-		-	Circle completed particles rising
-		-	Demon appear effect (initial at round)
-		-	Doll charged viewmodel effect
-		-	Candlefire
-		-	Doll charged world model effect?
+	✓	Additional particle effects?
+		✓	Circle completed particles rising
+		/	Demon appear effect (initial at round)
+		✓	Doll charged viewmodel effect
+		✓	Candlefire
+		✓	Doll charged world model effect?
 
 	CLEANUP
-	-	Stop round from starting every player initial spawn
+	✓	Stop round from starting every player initial spawn
 	-	Remove debug prints and functions
-	-	material models/player/panicritual/keeper_hooded_red_tattered_parts has a normal map and an envmapmask.  Must use $normalmapalphaenvmapmask.
+	✓	material models/player/panicritual/keeper_hooded_red_tattered_parts has a normal map and an envmapmask.  Must use $normalmapalphaenvmapmask.
 			for all Demon materials
 	-	Remove unused weapons and lua files
-	-	Package demon model as global playermodel
+	✓	Package demon model as global playermodel
+		✓	Add black variant
 	-	Test packaging of "content" (maybe needs to be moved to addon root)
-	-	Menu logo
-	-	Menu icon
-	-	Workshop thumbnail
+	✓	Menu logo
+	✓	Menu icon
+	✓	Workshop thumbnail
 	-	PLAYTEST
 			Adjustments after
 	-	Workshop screenshots
 	-	Workshop description
 	-	Github description
 
-
+	BALANCE POINTS
+	-	Circle candle distance (sphere distance)
+	-	Doll cleanse time
+	-	Doll charge time
+	-	Fade duration, kill radius, cooldown, speed (LMB)
+	-	Leap kill radius, cooldown, power
+	-	Doll charge time
+	-	Doll charge ammo, DPS
+	-	Demon base movement speed
+	-	Human base movement speed
+	-	Color correction & Fog
 	
 ]]

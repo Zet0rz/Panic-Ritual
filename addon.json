@@ -6,6 +6,11 @@
 	[
 		"*.psd",
 		"*.vcproj",
-		"*.svn*"
+		"*.svn*",
+		"*.git*",
+		"*.tga",
+		"*.sfk",
+		"*.md",
+		"LICENSE"
 	]
 }

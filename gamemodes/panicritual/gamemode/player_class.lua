@@ -77,10 +77,7 @@ function DEMONS:Loadout()
 	self.Player:Give("ritual_demon_possess")
 end
 
-local demonmodel = "models/player/keeper_red_hooded.mdl"
-player_manager.AddValidModel("keeper_red_hooded", "models/player/keeper_red_hooded.mdl")
-player_manager.AddValidHands("keeper_red_hooded", "models/player/c_arms_keeper_red_hooded.mdl", 0, "00000000")
-
+local demonmodel = "models/player/panicritual/keeper_hooded_red.mdl"
 local afktime = 60 -- seconds of not pressing any buttons to AFK
 local afkwarn = 30
 function DEMONS:Init()

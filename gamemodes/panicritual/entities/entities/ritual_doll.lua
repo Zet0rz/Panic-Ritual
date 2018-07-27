@@ -58,7 +58,12 @@ if SERVER then
 			self.RitualCircle:Reset()
 			return
 		end
+
 		-- Burn and disappear, then reset to home circle
+		net.Start("Ritual_DollReset")
+			net.WriteEntity(self)
+		net.Broadcast()
+		
 		self:SetPos(self.RitualCircle:GetPos() + self.RitualCircle:GetAngles():Up()*50)
 		self:SetAngles(self.RitualCircle:GetAngles())
 		self:SetMoveType(MOVETYPE_NONE)

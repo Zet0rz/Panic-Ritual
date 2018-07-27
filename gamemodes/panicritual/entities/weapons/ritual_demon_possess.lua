@@ -110,7 +110,7 @@ function SWEP:PrimaryAttack()
 	--if self.CirclesToPlace then
 	if GAMEMODE.RoundState == ROUND_PREPARE then
 		-- Logic for circle placing
-		local b = GAMEMODE:PlaceRitualCircle(self.Owner:GetPos(), Angle(0,self.Owner:GetAngles().y,0))
+		local b = GAMEMODE:PlaceRitualCircle(self.Owner:GetPos(), Angle(0,self.Owner:GetAngles().y,0), self.Owner)
 		if b then self:PlayActAndWait(ACT_VM_THROW) end
 
 		self.NextFade = ct + fadecooldown
@@ -303,6 +303,37 @@ if CLIENT then
 	function SWEP:DrawWorldModel()
 
 	end
+
+	local spacecol = Color(0,255,0)
+	local nospacecol = Color(255,0,0)
+	local mins = Vector(-10,-10,1)
+	local maxs = Vector(10,10,30)
+	function SWEP:PostDrawViewModel()
+		--[[[if GAMEMODE.RoundState == ROUND_PREPARE then
+			local a = Angle(0, 360/3, 0)
+			local canplace = true
+			local pos = self.Owner:GetPos()
+			local ang = Angle(0,self.Owner:GetAngles()[2],0)
+			for i = 0, 2 do
+				local p = (ang + a):Forward()*100
+				p:Rotate(a*i)
+				
+				tr = util.TraceHull({
+					start = p + pos + Vector(0,0,30),
+					endpos = p + pos,
+					maxs = maxs,
+					mins = mins,
+					--filter = ent,
+					mask = MASK_NPCWORLDSTATIC,
+				})
+				
+				render.DrawWireframeBox(p + pos, Angle(), mins, maxs, tr.Hit and nospacecol or spacecol, true)
+				if tr.Hit then canplace = false end
+			end
+
+			self.CanPlaceCircle = canplace
+		end]]
+	end
 end
 
 
@@ -398,7 +429,7 @@ if SERVER then
 		e:SetRadius(10)
 		util.Effect("ritual_torment", e, true, true)
 
-		self:Scream()
+		self:DeathScream()
 	end
 
 	function PLAYER:ReleaseSoulTorment()
