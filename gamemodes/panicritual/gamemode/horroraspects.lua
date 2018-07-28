@@ -3,6 +3,14 @@ local fadetime = 5
 
 if SERVER then
 	local fov = 50
+
+	local stop = Vector(0.0,0,0)
+	local sbot = Vector(0.1,0,0)
+	local sdusk = Vector(0,0,0)
+	local sdint = 0
+	local sdsca = 1
+	local ssun = Vector(0,0,1)
+
 	hook.Add("Ritual_RoundBegin", "Ritual_BeginFOV", function()
 		for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
 			v:SetFOV(fov,fadetime)
@@ -15,7 +23,16 @@ if SERVER then
 
 		local fadecomplete = CurTime() + fadetime
 		hook.Add("Think", "Ritual_RoundFade", function()
-			if CurTime() >= fadecomplete then
+			local pct = 1 - (fadecomplete - CurTime())/fadetime
+			if GAMEMODE.SkyPaint then
+				GAMEMODE.SkyPaint:SetTopColor(LerpVector(pct, GAMEMODE.SkyTopColor, stop))
+				GAMEMODE.SkyPaint:SetBottomColor(LerpVector(pct, GAMEMODE.SkyBottomColor, sbot))
+				GAMEMODE.SkyPaint:SetDuskColor(LerpVector(pct, GAMEMODE.SkyDuskColor, sdusk))
+				GAMEMODE.SkyPaint:SetDuskIntensity(Lerp(pct, GAMEMODE.SkyDuskIntensity, sdint))
+				GAMEMODE.SkyPaint:SetDuskScale(Lerp(pct, GAMEMODE.SkyDuskScale, sdsca))
+				GAMEMODE.SkyPaint:SetSunNormal(LerpVector(pct, GAMEMODE.SkySunNormal, ssun))
+			end
+			if pct >= 1 then
 				for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
 					v:SetFOV(0,0.2)
 				end
@@ -27,6 +44,17 @@ if SERVER then
 				hook.Remove("Think", "Ritual_RoundFade")
 			end
 		end)
+	end)
+
+	hook.Add("Ritual_RoundPrepare", "Ritual_ResetSkyPaint", function()
+		if GAMEMODE.SkyPaint then
+			GAMEMODE.SkyPaint:SetTopColor(GAMEMODE.SkyTopColor)
+			GAMEMODE.SkyPaint:SetBottomColor(GAMEMODE.SkyBottomColor)
+			GAMEMODE.SkyPaint:SetDuskColor(GAMEMODE.SkyDuskColor)
+			GAMEMODE.SkyPaint:SetDuskIntensity(GAMEMODE.SkyDuskIntensity)
+			GAMEMODE.SkyPaint:SetDuskScale(GAMEMODE.SkyDuskScale)
+			GAMEMODE.SkyPaint:SetSunNormal(GAMEMODE.SkySunNormal)
+		end
 	end)
 end
 
@@ -106,7 +134,7 @@ if CLIENT then
 		render.FogEnd(fogrange)
 		if LocalPlayer():IsDemon() then
 			render.FogStart(-1000)
-			render.FogMaxDensity(fogdensity*0.99)
+			render.FogMaxDensity(fogdensity*0.95)
 		else
 			render.FogStart(-1000)
 			render.FogMaxDensity(fogdensity)
@@ -130,7 +158,7 @@ if CLIENT then
 	end
 
 	hook.Add("Ritual_RoundBegin", "Ritual_RoundFadeIn", function() RoundEffectChange(true) end)
-	hook.Add("Ritual_RoundInit", "Ritual_RoundFadeOff", function()
+	hook.Add("Ritual_RoundPrepare", "Ritual_RoundFadeOff", function()
 	--hook.Add("PostCleanupMap", "Ritual_RoundFadeOff", function()
 		fogdensity = 0
 		fogrange = fogmaxrange
@@ -147,31 +175,44 @@ if CLIENT then
 		}
 	end)
 
-	-- Our own skypaint modifier
-	local skypaint = {
-		TopColor = Vector(0,0,0),
-		BottomColor = Vector(0,0,0),
-		SunNormal = Vector(0,0,-1),
-		SunColor = Vector(0,0,0),
-		DuskColor = Vector(0.1,0,0),
-		FadeBias = 1,
-		HDRScale = 1,
-		DuskScale = 1,
-		DuskIntensity = 1,
-		SunSize = 0
-	}
-	function skypaint:GetTopColor() return self.TopColor end
-	function skypaint:GetBottomColor() return self.BottomColor end
-	function skypaint:GetSunNormal() return self.SunNormal end
-	function skypaint:GetSunColor() return self.SunColor end
-	function skypaint:GetDuskColor() return self.DuskColor end
-	function skypaint:GetFadeBias() return self.FadeBias end
-	function skypaint:GetHDRScale() return self.HDRScale end
-	function skypaint:GetDuskScale() return self.DuskScale end
-	function skypaint:GetDuskIntensity() return self.DuskIntensity end
-	function skypaint:GetSunSize() return self.SunSize end
+	-- Shiver horror aspect
+	local nextcheck = 0
+	local mindist = 300
+	local maxdist = 600
+	local dotdist = 300
+	local checkdelay = 2
+	local minpitch = 80
+	local scalepitch = 20
+	hook.Add("Think", "Ritual_ShiverThink", function()
+		if CurTime() > nextcheck then
+			if LocalPlayer():IsHuman() and GAMEMODE.RoundState == ROUND_ONGOING then
+				local bestscale = 0
+				for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
+					if v:Alive() then
+						local dir = LocalPlayer():GetPos() - v:GetPos() -- from demon to you
+						local dist = dir:Length()
+						local dot = dist - v:GetAimVector():Dot(dir:GetNormalized())*dotdist
+						local scale = math.Clamp(1 - (dot - mindist)/maxdist, 0, 1)
 
-	function skypaint:GetDrawStars() return false end
+						local tension = scale
+						if tension > bestscale then bestscale = tension end
+						if tension == 1 then break end
+					end
+				end
 
-	g_SkyPaint = skypaint
+				if not LocalPlayer().ShiverSound then
+					local s = CreateSound(LocalPlayer(), "panicritual/suspense_loop.wav")
+					s:PlayEx(bestscale, minpitch + bestscale*scalepitch)
+					LocalPlayer().ShiverSound = s
+				else
+					if not LocalPlayer().ShiverSound:IsPlaying() then LocalPlayer().ShiverSound:Play() end
+					LocalPlayer().ShiverSound:ChangeVolume(bestscale, checkdelay)
+					LocalPlayer().ShiverSound:ChangePitch(minpitch + bestscale*scalepitch, checkdelay)
+				end
+			elseif LocalPlayer().ShiverSound and LocalPlayer().ShiverSound:IsPlaying() then
+				LocalPlayer().ShiverSound:FadeOut(3)
+			end
+			nextcheck = CurTime() + checkdelay
+		end
+	end)
 end

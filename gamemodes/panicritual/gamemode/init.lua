@@ -24,6 +24,23 @@ include("horroraspects.lua")
 resource.AddFile("resource/fonts/octobercrow.ttf")
 resource.AddFile("resource/fonts/hauntaoe.ttf")
 
+RunConsoleCommand("sv_skyname", "painted")
+hook.Add("InitPostEntity", "Ritual_RemoveSkyPaint", function()
+	local sky = ents.FindByClass("env_skypaint")[1]
+	if not IsValid(sky) then
+		sky = ents.Create("env_skypaint")
+		sky:Spawn()
+	end
+	GAMEMODE.SkyPaint = sky
+	GAMEMODE.SkyTopColor = sky:GetTopColor()
+	GAMEMODE.SkyBottomColor = sky:GetBottomColor()
+	GAMEMODE.SkyDuskColor = sky:GetDuskColor()
+	GAMEMODE.SkyDuskIntensity = sky:GetDuskIntensity()
+	GAMEMODE.SkyDuskScale = sky:GetDuskScale()
+	GAMEMODE.SkySunNormal = sky:GetSunNormal()
+	sky:SetDrawStars(false)
+end)
+
 function GM:PlayerInitialSpawn(ply)
 	player_manager.SetPlayerClass(ply, "player_ritual_base")
 	--ply:SetShouldServerRagdoll(true)
@@ -33,7 +50,7 @@ function GM:PlayerInitialSpawn(ply)
 end
 
 function GM:PlayerSpawn(ply)
-	ply:SetupHands()
+	--ply:SetupHands()
 	player_manager.RunClass(ply, "Loadout")
 	--if ply:IsHuman() then ply:Give("ritual_human") end
 end

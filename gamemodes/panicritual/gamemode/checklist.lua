@@ -116,13 +116,21 @@
 	✓	Dying with doll drops it
 	-	Dropped doll reset burn effect
 	✓	Molotov fire sound effect
+	✓	Spectate on join mid-round
+	✓	Spectate by suiciding within 3 seconds of round restart
+	✓	Fix faceplant bug
+
+	✓	Hint/effect for distance to circle
+			Blood from eyes?
+			Shake?
+		✓	Whispers
 
 	POTENTIAL
-	-	Shiver horror aspect
+	✓	Shiver horror aspect
 	-	Rising stinger horror aspect
-	-	Doll whisper horror aspect
+	✓	Doll whisper horror aspect
 	-	Round over music
-	-	Demon sounds
+	✓	Demon sounds
 	-	Human spawn voicelines
 	✓	Additional particle effects?
 		✓	Circle completed particles rising
@@ -150,15 +158,35 @@
 	-	Github description
 
 	BALANCE POINTS
-	-	Circle candle distance (sphere distance)
-	-	Doll cleanse time
-	-	Doll charge time
+	✓	Circle candle distance (sphere distance)
+	✓	Doll cleanse time (4 sec)
+	✓	Doll charge time (10 sec)
 	-	Fade duration, kill radius, cooldown, speed (LMB)
-	-	Leap kill radius, cooldown, power
-	-	Doll charge time
-	-	Doll charge ammo, DPS
-	-	Demon base movement speed
-	-	Human base movement speed
+		-	Stun/slowdown?
+		-	Some type of punishment
+		-	Fog fadein? Some way of making it easier for the human to get away
+	✓	Leap kill radius, cooldown, power (4 sec cooldown)
+	✓	Doll charge ammo, DPS (Damage upped to 4, DPS: 80)
+	✓	Demon base movement speed (slightly slower)
+	✓	Human base movement speed (same)
 	-	Color correction & Fog
-	
+		-	
+	-	Anti-camping?
+		-	Throw dolls to cleanse
+		-	
+	✓	Stamina system
+		✓	Stamina for both demon and human
+		✓	Demon walks faster than human
+		✓	Human sprints faster than demon
+
+	✓	Shiver Horror Aspect
+		✓	Play stinger/violin sound effect as the demon looks your direction
+		✓	Dot product (offset) times distance = volume
+		✓	Volume fade
+
+	✓	Demon break windows and breakables
+	-	Fix jumpscare inconsistencies
+	-	Fix circles/candles left over?
+	-	Fix charged doll viewmodel particles
+	-	More hints for abilities
 ]]

@@ -9,6 +9,8 @@ local hooks = {
 	[ROUND_POST] = "Ritual_RoundPost",
 }
 
+GM.RoundState = GM.RoundState or ROUND_INIT
+
 if SERVER then
 	-- CONFIG VARIABLES
 	local total_circles = 3 -- Demons place 3 circles
@@ -42,8 +44,6 @@ if SERVER then
 		return picked
 	end
 
-	GM.RoundState = ROUND_INIT
-
 	util.AddNetworkString("Ritual_RoundState")
 	function GM:SetRoundState(state)
 		self.RoundState = state
@@ -58,6 +58,19 @@ if SERVER then
 		net.Start("Ritual_RoundState")
 			net.WriteUInt(GAMEMODE.RoundState, 2)
 		net.Send(ply)
+
+		if not ply:IsDemon() then ply:SetHuman() end
+		if GAMEMODE.RoundState == ROUND_PREPARE or GAMEMODE.RoundState == ROUND_INIT then
+			ply:Spawn()
+			player_manager.RunClass(ply, "Init")
+		else
+			GAMEMODE:PlayerSpawnAsSpectator(ply)
+			timer.Simple(0, function()
+				ply:KillSilent()
+				ply:SetHuman()
+				ply:Spectate(OBS_MODE_ROAMING)
+			end)
+		end
 	end)
 
 	local numcircles = 0
@@ -88,6 +101,8 @@ if SERVER then
 				v:SetNoCollidePlayers(false)
 				v:DrawShadow(true)
 				v.DemonChance = v.DemonChance and v.DemonChance + 1 or 1
+
+				player_manager.RunClass(v, "Init")
 			end
 		end
 
@@ -260,16 +275,25 @@ if SERVER then
 	--[[function GM:PlayerDeath(ply)
 		
 	end]]
-	local respawntime = 3
+	local respawntime = 5
 	function GM:PostPlayerDeath(ply)
 		if GAMEMODE.RoundState == ROUND_PREPARE then
 			ply.RespawnTime = CurTime() + respawntime
 		else
-			timer.Simple(3, function() ply:Spectate(OBS_MODE_ROAMING) end) -- Timer fixes ragdolls spawning in default pose
+			if ply:GetObserverMode() ~= OBS_MODE_NONE then return end -- Already spectating
+			timer.Simple(respawntime, function() -- Timer fixes ragdolls spawning in default pose
+				if IsValid(ply) and not ply:Alive() then
+					ply:Spectate(OBS_MODE_ROAMING)
+				end
+			end)
 		end
 		CheckTeams()
 	end
-	hook.Add("PlayerSpawn", "Ritual_StopSpectate", function(ply) ply:UnSpectate() end)
+	hook.Add("PlayerSpawn", "Ritual_StopSpectate", function(ply)
+		--if ply.RespawnTime or GAMEMODE.RoundState == ROUND_PREPARE or GAMEMODE.RoundState == ROUND_INIT then
+			ply:UnSpectate()
+		--end
+	end)
 
 	-- Also handle for disconnecting players
 	hook.Add("EntityRemoved", "Ritual_PlayerDisconnect", function(ply)
@@ -292,8 +316,8 @@ if SERVER then
 	function GM:PlayerDeathThink(ply)
 		if ply.RespawnTime then
 			if CurTime() >= ply.RespawnTime then
-				ply.RespawnTime = nil
 				ply:Spawn()
+				ply.RespawnTime = nil
 				return true
 			end
 			return
@@ -359,7 +383,11 @@ if SERVER then
 
 	function GM:GetFallDamage(ply, speed)
 		if ply:IsDemon() then return 0 end
-		return speed/10
+		return speed/15
+	end
+
+	function GM:GetRitualCircles()
+		return circles
 	end
 
 	util.AddNetworkString("Ritual_DollReset")

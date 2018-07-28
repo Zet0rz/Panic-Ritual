@@ -28,12 +28,13 @@ if SERVER then
 								return
 							end
 							self:SetNoCollidePlayers(false)
-							print("No longer colliding")
 							self:CollisionRulesChanged()
 						end
 						hook.Remove("Think", "Ritual_CollideWhenPossible_"..id)
 					end
 				end)
+			else
+				self:SetNoCollidePlayers(false)
 			end
 		end
 	end

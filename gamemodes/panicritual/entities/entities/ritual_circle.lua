@@ -62,6 +62,12 @@ function ENT:Initialize()
 		self.Circle:SetParent(self)
 		self.Circle:SetMoveType(MOVETYPE_NONE)
 		self.Circle:SetNotSolid(true)
+		self.Circle.Circle = self
+
+		self.Circle.RenderOverride = function(s)
+			if not IsValid(s.Circle) then s:Remove() end -- Remove circles that aren't tied a valid Ritual Circle
+			s:DrawModel()
+		end
 		
 		if not LocalPlayer():IsDemon() and GAMEMODE.RoundState == ROUND_PREPARE then
 			self.Circle:SetNoDraw(true)
@@ -134,7 +140,7 @@ if SERVER then
 
 	function ENT:AllowCleanse(doll)
 		local circle = doll.RitualCircle
-		if not circle then return false end
+		if not IsValid(circle) then return false end
 		return (circle:GetProgress() >= circle:GetRequiredCharge() - 1) == (circle == self) and not circle:HasCompletedCircle(self)
 	end
 

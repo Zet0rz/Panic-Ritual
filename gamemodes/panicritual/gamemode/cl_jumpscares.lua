@@ -115,13 +115,15 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 			local vis, tr = ply:VisibleTo(lp)
 			if vis then
 				local ct = CurTime()
-				local dist = ply:GetPos():Distance(lp:GetPos())
+				local lpos = lp:GetPos()
+				local ppos = ply:GetPos()
+				local dist = ppos:Distance(lpos)
 
 				if not scares[ply] or (scares[ply].reset and scares[ply].reset < ct) then
 					scares[ply] = {next = math.huge}
 				end
 
-				if scares[ply].next > dist then
+				if scares[ply].next > dist then --and lp:GetAimVector():Dot((ppos - lpos):GetNormalized()) > 0 then
 					local index
 					for k,v in ipairs(jumpscares.distances) do
 						if v > dist then index = k break end

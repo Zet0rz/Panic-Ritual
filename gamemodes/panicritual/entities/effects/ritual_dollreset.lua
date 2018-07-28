@@ -31,7 +31,7 @@ local emitdelay = 0.05
 local risetime = 0.2
 local risefadeout = 0.5
 
-local soundeffect = Sound("sound/panicritual/mtov_flame2.wav")
+local soundeffect = Sound("panicritual/doll_reset.wav")
 
 function EFFECT:Init( data )
 	self.Ent = data:GetEntity()

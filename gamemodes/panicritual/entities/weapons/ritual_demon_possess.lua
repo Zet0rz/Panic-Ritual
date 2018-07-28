@@ -87,20 +87,37 @@ function SWEP:Deploy()
 	
 end
 
-function SWEP:DrawHUD()
-
-end
-
 function SWEP:OnRemove()
 	
 end
 
 -- Primary attack: Short-range fade
-local fadecooldown = 3
-local fadetime = 0.25
-local fadespeed = 1000
+local fadecooldown = 5
+local fadetime = 0.5
+local fadespeed = 500
 local fadekillradius = 50
+local fadestaminlock = 5
+local breakables = {
+	["func_breakable"] = true,
+	["func_breakable_surf"] = true,
+	["prop_physics"] = true,
+	["prop_physics_multiplayer"] = true,
+}
 function SWEP:PrimaryAttack()
+	local tr = util.TraceLine({
+		start = self.Owner:EyePos(),
+		endpos = self.Owner:EyePos() + self.Owner:GetAimVector()*100,
+		filter = self.Owner
+	})
+	if tr.Hit and IsValid(tr.Entity) and breakables[tr.Entity:GetClass()] then
+		if SERVER then
+			tr.Entity:TakeDamage(20, self.Owner, self)
+			tr.Entity:Fire("Break")
+		end
+		self.Owner:ViewPunch(Angle(-3, 0, 0))
+		self:PlayActAndWait(ACT_VM_HITCENTER)
+		return 
+	end
 	if CLIENT then return end
 	--if self.Leaping then return end
 
@@ -110,7 +127,7 @@ function SWEP:PrimaryAttack()
 	--if self.CirclesToPlace then
 	if GAMEMODE.RoundState == ROUND_PREPARE then
 		-- Logic for circle placing
-		local b = GAMEMODE:PlaceRitualCircle(self.Owner:GetPos(), Angle(0,self.Owner:GetAngles().y,0), self.Owner)
+		local b = self.Owner:IsOnGround() and GAMEMODE:PlaceRitualCircle(self.Owner:GetPos(), Angle(0,self.Owner:GetAngles().y,0), self.Owner)
 		if b then self:PlayActAndWait(ACT_VM_THROW) end
 
 		self.NextFade = ct + fadecooldown
@@ -124,11 +141,12 @@ function SWEP:PrimaryAttack()
 end
 
 -- Secondary attack: Long-range fade leap
-local leapcooldown = 2 -- Cooldown after landing
+local leapcooldown = 4 -- Cooldown after landing
 local minleap = 300
 local chargedleap = 300 -- +power for charging fully
 local maxchargetime = 1.5 -- Seconds of LMB to reach full charge leap
-local leapkillradius = 100
+local leapkillradius = 75 -- How big radius per second
+local maxleapkillradius = 300
 if SERVER then
 	function SWEP:Fade(time)
 		self.Owner:SetFading(true)
@@ -156,12 +174,14 @@ if SERVER then
 				net.Send(self.Owner)
 
 				if not self.FadeTime then
-					self.Owner:SetFading(false, leapkillradius)
+					local radius = math.Min((CurTime() - self.LeapTime)*leapkillradius, maxleapkillradius)
+					self.Owner:SetFading(false, radius)
 				end
 			end
 		elseif self.FadeTime and ct > self.FadeTime then
 			player_manager.RunClass(self.Owner, "ApplyMoveSpeeds")
 			self.Owner:SetFading(false, fadekillradius)
+			self.Owner:StaminaLock(fadestaminlock)
 			self.FadeTime = nil
 			self.NextFade = ct + fadecooldown
 
@@ -203,6 +223,7 @@ function SWEP:Leap(power)
 	self.Leaping = true
 	self.LeapCharging = false
 	self.NextLeap = nil
+	self.LeapTime = CurTime()
 
 	net.Start("Ritual_DemonCooldowns")
 		net.WriteBool(true) -- Leap
@@ -225,15 +246,19 @@ function SWEP:ExitFade(kill)
 end
 
 if CLIENT then
-	local width = 150
-	local height = 120
+	local width = 140
+	local height = 100
 	local pad = 50
 	local space = 25
+	local ypad = 120
+	local staminabarsize = 640
+	local staminabarheight = 80
 
 	local fade = Material("panicritual/hud/demon_fade.png", "noclamp")
 	local leap = Material("panicritual/hud/demon_leap.png", "noclamp")
 	local backdrop = Material("panicritual/hud/ability_backdrop.png", "noclamp")
 	local circles = Material("panicritual/hud/circle_doll.png", "noclamp")
+	local staminabar = Material("panicritual/hud/glyph_bar.png", "noclamp")
 
 	net.Receive("Ritual_DemonCooldowns", function()
 		local wep = LocalPlayer():GetWeapon("ritual_demon_possess")
@@ -258,7 +283,7 @@ if CLIENT then
 		surface.SetMaterial(backdrop)
 		local posx1 = w - pad - width
 		local posx2 = w - pad - width*2 - space
-		local posy = h - pad - height
+		local posy = h - ypad - height
 		surface.DrawTexturedRect(posx1, posy, width, height)
 		surface.DrawTexturedRect(posx2, posy, width, height)
 
@@ -298,6 +323,25 @@ if CLIENT then
 
 		draw.SimpleTextOutlined("LMB", "Ritual_HUDFont", posx2 + width - 20, posy + height, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
 		draw.SimpleTextOutlined("RMB", "Ritual_HUDFont", posx1 + width - 20, posy + height, GAMEMODE.RoundState ~= ROUND_PREPARE and color_white or color_disabled, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
+	
+		-- Stamina
+		local stamina = LocalPlayer():GetStamina() --LocalPlayer():GetRitualStamina()
+		local pct = stamina/100
+		surface.SetDrawColor(0,0,0,250)
+		surface.SetMaterial(staminabar)
+		surface.DrawTexturedRect(w - 640, h - 125, 600, 80)
+		surface.SetDrawColor(100,0,0)
+		surface.DrawTexturedRectUV(w - 40 - pct*600, h - 125, 600*pct, 80, 1- pct, 0, 1, 1)
+
+		if self.Owner.Ritual_StaminaLock then
+			local pct2 = (self.Owner.Ritual_StaminaLock - CurTime())/self.Owner.Ritual_StaminaLockTime
+			local pct3 = 1 - pct2
+			surface.SetDrawColor(100*pct3,0,0,pct2*255)
+			surface.DrawTexturedRectUV(w - 45 - pct3*600, h - 130, 600*pct3 + 10, 90, pct2, 0, 1, 1)
+			if pct3 >= 1 then
+				self.Owner.Ritual_StaminaLock = nil
+			end
+		end
 	end
 
 	function SWEP:DrawWorldModel()
@@ -353,16 +397,22 @@ function PLAYER:GetPossessed()
 end]]
 
 function PLAYER:GetFading()
-	return self:GetNW2Bool("Ritual_Fading")
+	--return self:GetNWBool("Ritual_Fading")
+	return self:GetRitualFading()
 end
 
 function PLAYER:GetTormented()
-	return self:GetNW2Bool("Ritual_Torment")
+	--return self:GetNWBool("Ritual_Torment")
+	return self:GetRitualTormented()
 end
 
 if SERVER then
+	-- local accessors just to make it easier to change the networking interface
+	local function setfade(ply,b) ply:SetRitualFading(b) end
+	local function settorment(ply,b) ply:SetRitualTormented(b) end
+
 	function PLAYER:SetFading(b, killradius)
-		self:SetNW2Bool("Ritual_Fading", b)
+		setfade(self,b)
 		if b then
 			self:SetNoCollidePlayers(true)
 			local wep = self:GetActiveWeapon()
@@ -373,9 +423,11 @@ if SERVER then
 			if killradius then
 				local pos = self:GetPos()
 				for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
-					local dist = v:GetPos():Distance(pos)
-					if dist <= killradius then
-						v:SoulTorment(self)
+					if v:Alive() then
+						local dist = v:GetPos():Distance(pos)
+						if dist <= killradius then
+							v:SoulTorment(self)
+						end
 					end
 				end
 				if wep.ExitFade then wep:ExitFade() end
@@ -385,7 +437,7 @@ if SERVER then
 				e:SetRadius(killradius)
 				util.Effect("ritual_fadelash", e, true, true)
 			end
-			self:CollideWhenPossible()
+			timer.Simple(0, function() if IsValid(self) then self:CollideWhenPossible() end end)
 
 			--[[local tr = util.TraceEntity({start = self:GetPos(), endpos = self:GetPos(), filter = self}, self)
 			if IsValid(tr.Entity) and tr.Entity:IsPlayer() then
@@ -422,7 +474,7 @@ if SERVER then
 	function PLAYER:SoulTorment(inflictor)
 		self.TormentInflictor = inflictor
 		self:SetCollisionGroup(COLLISION_GROUP_WEAPON)
-		self:SetNW2Bool("Ritual_Torment", true)
+		settorment(self,true)
 
 		local e = EffectData()
 		e:SetEntity(self)
@@ -435,7 +487,7 @@ if SERVER then
 	function PLAYER:ReleaseSoulTorment()
 		self.TormentInflictor = nil
 		self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
-		self:SetNW2Bool("Ritual_Torment", false)
+		settorment(self,false)
 	end
 
 	hook.Add("PlayerSpawn", "Ritual_FadeSpawn", function(ply)
@@ -456,7 +508,7 @@ end)
 hook.Add("UpdateAnimation", "Ritual_TormentAnim", function(ply, vel, groundspeed)
 	if ply:GetTormented() ~= ply.TormentAnim then	
 		local seq = ply:LookupSequence(tormentanim)
-		ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, seq, ply.TormentAnim and 1 or 0, true)
+		--ply:AddVCDSequenceToGestureSlot(GESTURE_SLOT_CUSTOM, seq, ply.TormentAnim and 1 or 0, true)
 		ply:SetCycle(0)
 		ply.TormentAnim = ply:GetTormented()
 		ply.TormentDeathTime = ply.TormentAnim and CurTime() + ply:SequenceDuration(seq) or nil
@@ -483,6 +535,8 @@ hook.Add("StartCommand", "Ritual_TomentFreeze", function(ply, cmd)
 	if ply:GetNW2Bool("Ritual_Torment") then
 		cmd:ClearButtons()
 		cmd:ClearMovement()
+		cmd:SetMouseX(0)
+		cmd:SetMouseY(0)
 	end
 end)
 

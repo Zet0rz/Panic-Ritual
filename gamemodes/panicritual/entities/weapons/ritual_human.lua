@@ -24,16 +24,23 @@ SWEP.ViewModel	= "models/weapons/c_ritual_human.mdl" --"models/weapons/c_ritual_
 SWEP.WorldModel	= "models/weapons/w_ritual_human.mdl"
 SWEP.UseHands = true
 
-local cleansetime = 3
-local chargetime = 5
+local cleansetime = 4
+local chargetime = 10
 local ammo_type = "GaussEnergy"
 local chargeammo = 100
 
 -- Related to evil scale
-local mindist = 300 -- Distance at which scale is 1
-local maxdist = 1000 -- How far away from mindist scale reaches 0
-local updatedelay = 2 -- How often to run the distance check
-local approach = 0.5 -- How much the client interpolates last known to recently updated per second (smoothens)
+local emindist = 300 -- Distance at which scale is 1
+local emaxdist = 1000 -- How far away from mindist scale reaches 0
+local eupdatedelay = 2 -- How often to run the distance check
+local eapproach = 0.5 -- How much the client interpolates last known to recently updated per second (smoothens)
+
+-- Related to whisper scale
+local wmindist = 300 -- Distance at which scale is 1
+local wmaxdist = 1000 -- How far away from mindist scale reaches 0
+local wupdatedelay = 1 -- How often to run the distance check
+
+local dollcleansesound = Sound("panicritual/doll_cleanse.wav")
 
 SWEP.Primary.ClipSize		= -1
 SWEP.Primary.DefaultClip	= -1
@@ -50,6 +57,7 @@ function SWEP:SetupDataTables()
 	self:NetworkVar("Bool", 1, "Charged")
 	self:NetworkVar("Bool", 2, "Shooting")
 	self:NetworkVar("Float", 0, "EvilScale")
+	self:NetworkVar("Float", 1, "WhisperScale")
 
 	if SERVER then
 		--self:NetworkVarNotify("HasDoll", self.DollPickupAnimation)
@@ -278,6 +286,7 @@ if SERVER then
 			self.RitualCircle:Progress(circle, self.Owner)
 		end
 
+		self:EmitSound(dollcleansesound)
 		net.Start("ritual_doll_cleanse")
 			net.WriteEntity(self)
 		net.Broadcast()
@@ -300,8 +309,22 @@ if SERVER then
 				if dist < bestdist then bestdist = dist end
 			end
 		end
-		local scale = math.Clamp(1 - (bestdist - mindist)/maxdist, 0, 1)
+		local scale = math.Clamp(1 - (bestdist - emindist)/emaxdist, 0, 1)
 		self:SetEvilScale(scale)
+	end
+
+	function SWEP:UpdateWhisperScale()
+		if not IsValid(self.RitualCircle) then self:SetWhisperScale(0) return end
+
+		local bestdist = math.huge
+		for k,v in pairs(GAMEMODE.GetRitualCircles()) do
+			if v:AllowCleanse(self) then
+				local dist = self:GetPos():Distance(v:GetPos())
+				if dist < bestdist then bestdist = dist end
+			end
+		end
+		local scale = math.Clamp(1 - (bestdist - wmindist)/wmaxdist, 0, 1)
+		self:SetWhisperScale(scale)
 	end
 
 	function SWEP:Think()
@@ -368,7 +391,12 @@ if SERVER then
 
 		if not self.NextEvilUpdate or ct > self.NextEvilUpdate then
 			self:UpdateEvilScale()
-			self.NextEvilUpdate = ct + updatedelay
+			self.NextEvilUpdate = ct + eupdatedelay
+		end
+
+		if not self.NextWhisperUpdate or ct > self.NextWhisperUpdate then
+			self:UpdateWhisperScale()
+			self.NextWhisperUpdate = ct + wupdatedelay
 		end
 	end
 end
@@ -433,9 +461,9 @@ if CLIENT then
 		if self.LEyeEffect then
 			local targetpower = self:GetEvilScale()
 			if not self.EvilScale then self.EvilScale = 0 end
-			self.EvilScale = math.Approach(self.EvilScale, targetpower, FrameTime()*approach)
-			self.LEyeEffect:SetControlPoint(2, Vector(1,0,0)) -- Scale
-			self.REyeEffect:SetControlPoint(2, Vector(1,0,0))
+			self.EvilScale = math.Approach(self.EvilScale, targetpower, FrameTime()*eapproach)
+			self.LEyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0)) -- Scale
+			self.REyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0))
 
 			if viewmodel then
 				local pos,ang = viewmodel:GetBonePosition(viewmodel:LookupBone("Doll"))
@@ -509,8 +537,20 @@ if CLIENT then
 		--return pos, ang
 	end
 	
+	local lastwhisper = 0
 	function SWEP:PostDrawViewModel(vm, wep, ply)
 		drawdolleffects(self, vm)
+		if not self.WhisperSound then self.WhisperSound = CreateSound(self, "panicritual/doll_whisper.wav") end
+		if not self:GetHasDoll() and self.WhisperSound:IsPlaying() then
+			self.WhisperSound:Stop()
+		else
+			local scale = self:GetWhisperScale()
+			if scale ~= lastwhisper then
+				if not self.WhisperSound:IsPlaying() then self.WhisperSound:Play() end
+				self.WhisperSound:ChangeVolume(scale, wupdatedelay)
+				lastwhisper = scale
+			end
+		end
 	end
 
 	function SWEP:DrawWorldModel()
@@ -563,13 +603,14 @@ if CLIENT then
 			self.Owner:ManipulateBoneAngles(self.Owner:LookupBone("ValveBiped.Bip01_R_Hand"), Angle(0,0,0))
 		end
 		if self.Emitter then self.Emitter:Finish() end
+		if self.WhisperSound and self.WhisperSound:IsPlaying() then self.WhisperSound:Stop() end
 	end
 
 	local nodoll = Material("panicritual/hud/human_nodoll.png", "noclamp")
 	local doll = Material("panicritual/hud/human_doll.png", "noclamp")
 	local chargedoll = Material("panicritual/hud/human_dollcharge.png", "noclamp")
 
-	local ammobar = Material("panicritual/hud/glyph_bar.png", "noclamp")
+	local staminabar = Material("panicritual/hud/glyph_bar.png", "noclamp")
 	local backdrop = Material("panicritual/hud/ability_backdrop_square.png", "noclamp")
 
 	local throw = Material("panicritual/hud/human_throw.png", "noclamp")
@@ -587,21 +628,34 @@ if CLIENT then
 	function SWEP:DrawHUD()
 		local w,h = ScrW(),ScrH()
 
+		-- Stamina
 		surface.SetDrawColor(0,0,0,250)
-		surface.SetMaterial(ammobar)
-		surface.DrawTexturedRect(w - pad - size2 - barsize, h - pad - barlower, barsize, barheight)
+		surface.SetMaterial(staminabar)
+		surface.DrawTexturedRect(w - pad - 130 - barsize, h - pad - barlower, barsize, barheight)
 
-		local hasdoll = self:GetHasDoll()
-		local pct = self.Owner:GetAmmoCount(ammo_type)/chargeammo
+		local pct = self.Owner:GetStamina()/100
 		surface.SetDrawColor(0,150,255)
-		surface.DrawTexturedRectUV(w - pad - size2 - barsize*pct, h - pad - barlower, barsize*pct, barheight, 1-pct, 0, 1, 1)
+		surface.DrawTexturedRectUV(w - pad - 130 - barsize*pct, h - pad - barlower, barsize*pct, barheight, 1-pct, 0, 1, 1)
 
+		if self.Owner.Ritual_StaminaLock then
+			local pct2 = (self.Owner.Ritual_StaminaLock - CurTime())/self.Owner.Ritual_StaminaLockTime
+			local pct3 = 1 - pct2
+			surface.SetDrawColor(0,150*pct3,255*pct3,pct2*255)
+			surface.DrawTexturedRectUV(w - pad - 130 - barsize*pct3 - 5, h - pad - barlower - 5, barsize*pct3 + 10, barheight + 10, pct2, 0, 1, 1)
+			if pct3 >= 1 then
+				self.Owner.Ritual_StaminaLock = nil
+			end
+		end
+
+		-- Main doll icon
+		surface.SetDrawColor(0,150,255)
 		surface.SetMaterial(backdrop)
 		local posx1 = w - pad - size1
 		local posy1 = h - pad - size1
 		surface.DrawTexturedRect(posx1, posy1, size1, size1)
 
 		-- Throw
+		local hasdoll = self:GetHasDoll()
 		if hasdoll then
 			surface.SetDrawColor(0,150,255)
 			surface.DrawTexturedRect(posx1 - space - size2, posy1 + 10, size2, size2)
@@ -748,11 +802,34 @@ if CLIENT then
 end
 
 local firerate = 0.05
+local breakables = {
+	["func_breakable"] = true,
+	["func_breakable_surf"] = true,
+	["prop_physics"] = true,
+	["prop_physics_multiplayer"] = true,
+}
 function SWEP:PrimaryAttack()
+	if self.Owner:KeyPressed(IN_ATTACK) then
+		local tr = util.TraceLine({
+			start = self.Owner:EyePos(),
+			endpos = self.Owner:EyePos() + self.Owner:GetAimVector()*100,
+			filter = self.Owner
+		})
+		if tr.Hit and IsValid(tr.Entity) and breakables[tr.Entity:GetClass()] then
+			if SERVER then
+				tr.Entity:TakeDamage(20, self.Owner, self)
+				tr.Entity:Fire("Break")
+				self:PlayActAndWait(ACT_VM_THROW)
+			end
+			self.Owner:ViewPunch(Angle(-3, 0, 0))
+			return 
+		end
+	end
+
 	if self:GetCharged() and (not self.NextShot or self.NextShot <= CurTime()) then
 		self:FireBullets({
 			Attacker = self.Owner,
-			Damage = 2,
+			Damage = 4,
 			TracerName = "ritual_dolllaser",
 			Dir = self.Owner:GetAimVector(),
 			Src = self.Owner:GetShootPos(),

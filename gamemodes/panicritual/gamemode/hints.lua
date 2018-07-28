@@ -130,7 +130,7 @@ if CLIENT then
 			if tab and not self.Tab then
 				if self.DoubleTap and self.DoubleTap > CurTime() then self:Remove() else self.Tab = true end
 			elseif not tab and self.Tab then
-				self.DoubleTap = CurTime() + 0.1
+				self.DoubleTap = CurTime() + 0.2
 				self.Tab = false
 			end
 		end

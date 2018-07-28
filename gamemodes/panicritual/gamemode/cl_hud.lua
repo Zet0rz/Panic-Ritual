@@ -173,9 +173,10 @@ local targetids = {
 	end,
 }
 
-local targetdelay = 0.35
+local targetdelay = 0.25
 local targetident, targetidfunc
 local nexttargetiddraw = 0
+local demonlight
 function GM:HUDPaint()
 	local w,h = ScrW(), ScrH()
 	local ypad = h - (pad + iconsize)
@@ -232,6 +233,23 @@ function GM:HUDPaint()
 				end
 			end
 		end
+
+		if not demonlight then
+			demonlight = ProjectedTexture()
+			demonlight:SetTexture("vgui/white")
+			demonlight:SetFarZ(600)
+			demonlight:SetFOV(170)
+			demonlight:SetBrightness(0.2)
+			demonlight:SetColor(Color(255,100,100))
+			print("Created demonlight")
+		end
+		demonlight:SetPos(EyePos())
+		demonlight:SetAngles(EyeAngles())
+		demonlight:Update()
+	elseif demonlight then
+		demonlight:Remove()
+		print("removed demonlight")
+		demonlight = nil
 	end
 
 	-- Target ID
@@ -240,7 +258,7 @@ function GM:HUDPaint()
 	local enttotarget = IsValid(tr.Entity) and targetids[tr.Entity:GetClass()] and tr.Entity or nil
 	if enttotarget ~= targetident then
 		targetident = tr.Entity
-		targetidfunc = targetids[tr.Entity:GetClass()]
+		targetidfunc = tr.Entity and targetids[tr.Entity:GetClass()]
 		nexttargetiddraw = ct + targetdelay
 	end
 	if targetident and ct >= nexttargetiddraw then

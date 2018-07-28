@@ -100,6 +100,16 @@ local femalesoundpack = {
 	},
 }
 
+local demonsoundpack = {
+	Hurt = {
+		"panicritual/demon_damage1.wav",
+		"panicritual/demon_damage2.wav",
+	},
+	Death = {
+		"panicritual/demon_death.wav",
+	},
+}
+
 local models = {
 	["models/player/group01/female_01.mdl"] = femalesoundpack,
 	["models/player/group01/female_02.mdl"] = femalesoundpack,
@@ -115,7 +125,9 @@ local models = {
 	["models/player/group01/male_06.mdl"] = malesoundpack,
 	["models/player/group01/male_07.mdl"] = malesoundpack,
 	["models/player/group01/male_08.mdl"] = malesoundpack,
-	["models/player/group01/male_09.mdl"] = malesoundpack
+	["models/player/group01/male_09.mdl"] = malesoundpack,
+	["models/player/panicritual/keeper_hooded_red.mdl"] = demonsoundpack,
+	["models/player/panicritual/keeper_hooded_black.mdl"] = demonsoundpack,
 }
 
 function PLAYER:DeathScream()
