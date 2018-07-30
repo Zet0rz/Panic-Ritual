@@ -127,6 +127,9 @@ if SERVER then
 		end
 
 		GAMEMODE:SetRoundState(ROUND_ONGOING)
+		
+		self:SendHint("human_roundstart", team.GetPlayers(TEAM_HUMANS))
+		self:SendHint("demon_roundstart", team.GetPlayers(TEAM_DEMONS))
 	end
 
 	local mins = Vector(-10,-10,1)
@@ -253,6 +256,13 @@ if SERVER then
 
 	hook.Add("Ritual_TeamWin", "Ritual_TempWinIndicator", function(t)
 		PrintMessage(HUD_PRINTTALK, t > 0 and team.GetName(t) .. " wins!" or "Everyone's dead!")
+		if t == TEAM_DEMONS then
+			GAMEMODE:BroadcastHint("demon_win")
+		elseif t == TEAM_HUMANS then
+			GAMEMODE:BroadcastHint("human_win")
+		else
+			GAMEMODE:BroadcastHint("noone_win")
+		end
 	end)
 
 	function GM:Ritual_CanPickUpDoll(doll, wep, caller)
@@ -284,6 +294,7 @@ if SERVER then
 			timer.Simple(respawntime, function() -- Timer fixes ragdolls spawning in default pose
 				if IsValid(ply) and not ply:Alive() then
 					ply:Spectate(OBS_MODE_ROAMING)
+					if ply:IsHuman() then ply:SendHint("human_spectator_hint") end
 				end
 			end)
 		end

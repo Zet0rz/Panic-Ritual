@@ -59,7 +59,7 @@ if SERVER then
 end
 
 if CLIENT then
-	local fogminrange = 600
+	local fogminrange = 800
 	local fogmaxrange = 5000
 	local fadesound = Sound("panicritual/roundstart.wav")
 	local ccRound = {

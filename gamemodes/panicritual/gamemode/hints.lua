@@ -1,6 +1,17 @@
 
 print("hints")
 
+local function pickorgetval(val)
+	local t = type(val)
+	if t == "table" then
+		return val[math.random(#val)]
+	elseif t == "function" then
+		return t()
+	else
+		return val
+	end
+end
+
 local hints = {}
 function GM:AddHint(id, tbl)
 	hints[id] = tbl
@@ -150,7 +161,7 @@ if CLIENT then
 
 		if tbl.Header and tbl.Header ~= "" then
 			panel.Header = panel:Add("Panel")
-			local str = type(tbl.Header) == "table" and tbl.Header[math.random(#tbl.Header)] or tbl.Header
+			local str = pickorgetval(tbl.Header)
 			
 			surface.SetFont("Ritual_HUDFont")
 			local x,y = surface.GetTextSize(str)
@@ -169,7 +180,7 @@ if CLIENT then
 
 		if tbl.Text then
 			panel.Text = panel:Add("Panel")
-			local str = type(tbl.Text) == "table" and tbl.Text[math.random(#tbl.Text)] or tbl.Text
+			local str = pickorgetval(tbl.Text)
 			
 			surface.SetFont("Ritual_ScrollAlive")
 			local x,y = surface.GetTextSize(str)
@@ -188,7 +199,7 @@ if CLIENT then
 		
 		if tbl.Icon then
 			panel.Icon = panel:Add("DImage")
-			local str = type(tbl.Icon) == "table" and tbl.Icon[math.random(#tbl.Icon)] or tbl.Icon
+			local str = pickorgetval(tbl.Icon)
 			panel.Icon:SetImage(str)
 			local size = math.Min(width, height)
 			panel.Icon:SetSize(size, size)
@@ -219,23 +230,31 @@ if CLIENT then
 
 			panel:SetPos(ScrW()/2 - width/2, ScrH() - height - 200)
 			panel.HintType = HINT_BOTTOMBOX
+			return panel
 		end,
 		[HINT_CENTERBOX] = function(tbl)
 			local panel = hintbox(tbl)
 			local width, height = panel:GetSize()
 			
 			panel:SetPos(ScrW()/2 - width/2, ScrH()/2 - height/2)
-			panel.HintType = HINT_BOTTOMBOX
+			panel.HintType = HINT_CENTERBOX
+			return panel
 		end,
 		[HINT_BOTTOM] = function(tbl)
+			local panel = floatingpanel(tbl)
+			local width, height = panel:GetSize()
 			
+			panel:SetPos(ScrW()/2 - width/2, ScrH()/4*3 - height/2)
+			panel.HintType = HINT_BOTTOM
+			return panel
 		end,
 		[HINT_CENTER] = function(tbl)
 			local panel = floatingpanel(tbl)
 			local width, height = panel:GetSize()
 			
 			panel:SetPos(ScrW()/2 - width/2, ScrH()/2 - height/2)
-			panel.HintType = HINT_BOTTOMBOX
+			panel.HintType = HINT_CENTER
+			return panel
 		end,
 	}
 	
@@ -243,6 +262,9 @@ if CLIENT then
 		local area = tbl.Position or HINT_BOTTOMBOX
 		if shownhints[area] then shownhints[area]:Remove() end
 
+		if tbl[1] then tbl = pickorgetval(tbl) end -- A table of hints numerically indexed
+		if tbl.Function then tbl = tbl.Function() or tbl end
+		if not tbl.Text and not tbl.Icon and not tbl.Header then return end
 		shownhints[area] = areafuncs[area](tbl)
 	end
 
@@ -274,7 +296,14 @@ else
 end
 
 GM:AddHint("human_spawn", {
-	Text = "Find the Ritual Circles and cleanse the Dolls by grabbing them and bringing them to the other Ritual Circles and back! But watch out for the summoned Demon protecting them!",
+	Text = {
+		"Something's wrong, the air feels heavier than it did before. Something changed but you can't quite put your finger on it yet. Maybe someone's behind this?",
+		"You have gathered here with some other people, but feel the presence of one additional entity. There is no one in sight though, but probably best to stay on guard.",
+		"Something brushes off of your shirt behind you! ... or was there anything? Maybe it was just the wind, but you can't help but feel like that wasn't the case.",
+		"Something definitely feels off. Last time you were here it wasn't liket this. Someone did something, and whoever might be behind it is probably among you right now.",
+		"You get an intense feeling that something is wrong. You feel distrust towards the other people you are with. One of you messed with things they don't understand.",
+		"Dark powers are at play. One of you must have tried something they shouldn't have. Whoever it was can wait, right now you feel more important problems are shaping up.",
+	},
 	Icon = "panicritual/hud/team_human.png",
 	Header = {
 		"You are Human",
@@ -288,8 +317,24 @@ GM:AddHint("human_spawn", {
 	Position = HINT_BOTTOMBOX,
 })
 
+GM:AddHint("human_roundstart", {
+	Text = "Find the Ritual Circles and cleanse the Dolls by bringing them to the other Ritual Circles and back! Listen for the whispers, but watch out for the summoned Demon hunting you down!",
+	Icon = "panicritual/hud/circle_doll.png",
+	Header = {
+		"The round starts!",
+		"Something has arrived!",
+		"Someone's at fault for this",
+		"A heavy fog materializes",
+		"The hunt is on!",
+		"Someone's hunting you!",
+		"Try to stay calm ...",
+		"You can find out who later",
+	},
+	Position = HINT_BOTTOMBOX,
+})
+
 GM:AddHint("demon_spawn", {
-	Text = "Position 3 Ritual Circles as far from each other as possible. Protect the Dolls that spawn on the Circles and kill all Humans before they can cleanse the Dolls by running with them to all other Circles!",
+	Text = "You are not at your full power and are invisible to Humans. Position 3 Ritual Circles to materialize! They should be far from each other, as Humans have to cleanse them to exorcise you!",
 	Icon = "panicritual/hud/team_demon.png",
 	Header = {
 		"You are the Demon",
@@ -301,8 +346,147 @@ GM:AddHint("demon_spawn", {
 	Position = HINT_BOTTOMBOX,
 })
 
+-- These take the place of the demon's ability hints, whereas humans get them while spectating
+GM:AddHint("demon_objective_humans", {
+	Text = "You have materialized! Find and kill all Humans before they can exorcise you by cleansing the dolls at the circles! The number of Humans left is shown above your health bar.",
+	Icon = "panicritual/hud/human_mask.png",
+	Header = "The hunt is on!",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("demon_ability_fade", {
+	Text = "Fade lasts for 0.5 seconds and gives you slightly higher movement speed. If you are inside a Human at the end of it, you will kill him. It has a cooldown and Stamina Stuns you after use.",
+	Icon = "panicritual/hud/demon_fade.png",
+	Header = "Fade Dash",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("demon_ability_leap", {
+	Text = "Leap launches you the direction you're looking, and upon landing kills any Human nearby. The longer the air time, the bigger the radius. You can charge the Leap by HOLDING Right Click.",
+	Icon = "panicritual/hud/demon_leap.png",
+	Header = "Void Leap",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("demon_ability_stamina", {
+	Text = "Your Stamina is limited and Humans sprint faster than you. Save your Stamina for the chase, and walk while seeking; Humans are under the same limitations and walk slower than you.",
+	Icon = "panicritual/hud/team_demon.png",
+	Header = "Stamina",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("demon_objective_circleindicators", {
+	Text = "You can see the status of all your Ritual Circles. Each lit candle indicates how many Circles that doll has been cleansed at. If all are on, it means that circle is done!",
+	Icon = "panicritual/hud/candle_on.png",
+	Header = "Keep track",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("demon_ability_killing", {
+	Text = "Your abilities lets you enter your Void Form, becoming non-solid to everyone else. Exiting Void Form inside a Human will rip their Soul free from their body, killing them!",
+	Icon = "panicritual/hud/muted.png",
+	Header = "Killing Humans",
+	Position = HINT_BOTTOMBOX,
+})
+local demonstarthints = {
+	"demon_objective_humans",
+	"demon_ability_fade",
+	"demon_ability_leap",
+	"demon_objective_circleindicators",
+	"demon_ability_stamina",
+	"demon_ability_killing",
+}
+GM:AddHint("demon_roundstart", {
+	Function = function()
+		return GAMEMODE:GetHint(demonstarthints[math.random(#demonstarthints)])
+	end,
+	Position = HINT_BOTTOMBOX, -- This still picks the position for the picked table
+})
+
+GM:AddHint("human_ability_dollwhisper", {
+	Text = "Listen out for the whispers from the Doll you're carrying. It is louder the closer you are to a Ritual Circle you can cleanse at.",
+	Icon = "panicritual/hud/human_doll.png",
+	Header = "Whispers",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_ability_dolleyes", {
+	Text = "Notice the burning eyes of the Doll any Human is carrying. It burns brighter the closer the Demon is to that Doll!",
+	Icon = "panicritual/hud/human_doll.png",
+	Header = "Evil Influence",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_objective_dollcharging", {
+	Text = "When 2 of the 3 Ritual Circles have been completed, particles will appear on them. This means you can Charge their Dolls, giving you the only weapon you have against the Demon!",
+	Icon = "panicritual/hud/human_dollcharge.png",
+	Header = "Charging Dolls",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_objective_dollreset", {
+	Text = "Dropped Dolls will reset after not being picked up for too long. It will return to its Circle, and the Circle's candles will all be reset if it hasn't already been completed.",
+	Icon = "panicritual/hud/human_nodoll.png",
+	Header = "Doll Reset",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_ability_stamina", {
+	Text = "Your stamina is limited. Humans walk slower than Demons, but sprint faster. Save your stamina for being chased, and move around slowly to avoid getting found!",
+	Icon = "panicritual/hud/team_human.png",
+	Header = "Stamina",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_objective_fog", {
+	Text = "When the Demon materializes, it brings along with it a dense fog. However be aware that the Demon can see through it!",
+	Icon = "panicritual/hud/team_demon.png",
+	Header = "Red Fog",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_ability_cornerpeek", {
+	Text = "Look near a corner and hold ALT to peek around it. This isn't visible to anyone else. Use it often to spot the Demon so you can sprint away before he sees you!",
+	Icon = "panicritual/hud/human_peek.png",
+	Header = "Corner Peeking",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_ability_dollthrow", {
+	Text = "You can throw your Doll by pressing Right Click. Other Humans can pick it up and it will retain its progress and charge. But be aware of Doll Reset!",
+	Icon = "panicritual/hud/human_throw.png",
+	Header = "Throwing Dolls",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_objective_candle", {
+	Text = "As a Circle's Doll is cleansed at another Circle, a Candle is lit up indicating progress. The last Candle is always the Circle itself!",
+	Icon = "panicritual/hud/candle_on.png",
+	Header = "Circle Candles",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_ability_tension", {
+	Text = "Humans have an innate ability to sense danger approaching. When the Demon is looking in your direction, you will hear your tension rising the closer it gets.",
+	Icon = "panicritual/hud/unmuted.png",
+	Header = "Tension",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_objective_chargeddoll", {
+	Text = "A Charged Doll is able to shoot a beam of light which can kill the Demon! Watch out for its energy, when it runs out it will go back to its Circle! It can be recharged at its home Circle.",
+	Icon = "panicritual/hud/human_dollcharge.png",
+	Header = "Charged Dolls",
+	Position = HINT_BOTTOMBOX,
+})
+
+local humanspectatehints = {
+	"human_ability_cornerpeek",
+	"human_ability_dolleyes",
+	"human_ability_dollthrow",
+	"human_ability_dollwhisper",
+	"human_ability_stamina",
+	"human_ability_tension",
+	"human_objective_candle",
+	"human_objective_chargeddoll",
+	"human_objective_dollcharging",
+	"human_objective_dollreset",
+	"human_objective_fog"
+}
+-- These explain Human abilities and are shown when a Human dies and spectates (well, also Demon but that'd end the round)
+GM:AddHint("human_spectator_hint", {
+	Position = HINT_BOTTOMBOX,
+	Function = function()
+		return GAMEMODE:GetHint(humanspectatehints[math.random(#humanspectatehints)])
+	end
+})
+
 GM:AddHint("demon_circle_nospace", {
-	--Icon = "panicritual/hud/team_demon.png",
 	Header = "Not enough space",
 	Text = "There must be space for all candles and the doll.",
 	Position = HINT_CENTER,
@@ -312,7 +496,7 @@ GM:AddHint("demon_circle_nospace", {
 
 GM:AddHint("demon_circle_tooclose", {
 	Header = "Too close to another circle",
-	Text = "Circles must be at least 500 units away from each other.",
+	Text = "Circles cannot be too close to each other.",
 	Position = HINT_CENTER,
 	Time = 3,
 	Fade = 1,
@@ -330,4 +514,46 @@ GM:AddHint("demon_circle_time", {
 	Icon = "panicritual/hud/circle_doll.png",
 	Header = "Hurry up!",
 	Position = HINT_BOTTOMBOX,
+})
+
+GM:AddHint("demon_win", {
+	Text = "The Demon killed all Humans before they could exorcise the Demon.",
+	Icon = "panicritual/hud/team_demon.png",
+	Header = {
+		"The Demon wins!",
+		"The Humans were perished",
+		"All Humans were killed",
+		"No Humans left",
+		"The Demon is free",
+		"The Demon was victorious",
+	},
+	Position = HINT_CENTERBOX,
+})
+
+GM:AddHint("human_win", {
+	Text = "The Demon was killed before it could find and kill all Humans.",
+	Icon = "panicritual/hud/team_human.png",
+	Header = {
+		"Humans wins!",
+		"The Demon was exorcised",
+		"Exorcism successful",
+		"The Demon was returned",
+		"The Demon was killed",
+		"The Humans were victorious",
+	},
+	Position = HINT_CENTERBOX,
+})
+
+GM:AddHint("noone_win", {
+	Text = "The Demon along with all Humans vanished into the void.",
+	Icon = "panicritual/hud/human_nodoll.png",
+	Header = {
+		"No one wins!",
+		"Everyone died",
+		"No one was left",
+		"Everyone perished",
+		"Everyone vanished",
+		"The world forgets",
+	},
+	Position = HINT_CENTERBOX,
 })
