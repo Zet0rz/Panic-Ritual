@@ -275,10 +275,19 @@ local PLAYER_LINE = {
 		self.Name:SetFont("Ritual_ScrollAlive")
 		self.Name:SetTextColor(color_black)
 		self.Name:DockMargin(30, -1, 0, 0)
+		
+		self.Ping = self:Add("DLabel")
+		self.Ping:Dock(RIGHT)
+		self.Ping:SetWidth(50)
+		self.Ping:SetFont("Ritual_ScrollAlive")
+		self.Ping:SetTextColor(Color(200, 0, 0))
+		self.Ping:SetContentAlignment(5)
+		self.Ping:SetZPos(0)
 
 		self.Mute = self:Add("DImageButton")
 		self.Mute:SetSize(32, 32)
 		self.Mute:Dock(RIGHT)
+		self.Mute:SetZPos(1) -- Order this above the ping button
 
 		self:Dock(TOP)
 		self:DockPadding(3, 3, 3, 3)
@@ -325,6 +334,11 @@ local PLAYER_LINE = {
 		if self.PDemon == nil or self.PDemon ~= self.Player:IsDemon() then
 			self.PDemon = self.Player:IsDemon()
 			self.Name:SetTextColor(self.PDemon and Color(200,0,0) or color_black)
+		end
+		
+		if self.NumPing == nil or self.NumPing ~= self.Player:Ping() then
+			self.NumPing = self.Player:Ping()
+			self.Ping:SetText(self.NumPing)
 		end
 
 		if self.Muted == nil or self.Muted ~= self.Player:IsMuted() then
@@ -396,10 +410,11 @@ local SCORE_BOARD = {
 		summoned:Dock(FILL)
 
 		local mute = self.TeamDemons:Add("DLabel")
-		mute:SetText("Mute")
+		mute:SetText("Mute | Ping")
 		mute:DockMargin(0, 0, 0, 0)
 		mute:SetFont("Ritual_ScrollAlive")
 		mute:SetTextColor(Color(200,0,0))
+		mute:SizeToContents()
 		mute:SetContentAlignment(6)
 		mute:Dock(RIGHT)
 
@@ -442,11 +457,11 @@ local SCORE_BOARD = {
 
 		local plys = player.GetAll()
 		for id, pl in pairs(plys) do
-			if IsValid(pl.ScoreEntry) then continue end
-
-			pl.ScoreEntry = vgui.CreateFromTable(PLAYER_LINE, pl.ScoreEntry)
-			pl.ScoreEntry:Setup(pl)
-			self.Scores:AddItem(pl.ScoreEntry)
+			if not IsValid(pl.ScoreEntry) then
+				pl.ScoreEntry = vgui.CreateFromTable(PLAYER_LINE, pl.ScoreEntry)
+				pl.ScoreEntry:Setup(pl)
+				self.Scores:AddItem(pl.ScoreEntry)
+			end
 		end
 	end
 }
@@ -454,6 +469,7 @@ local SCORE_BOARD = {
 SCORE_BOARD = vgui.RegisterTable(SCORE_BOARD, "DPanel")
 
 function GM:ScoreboardShow()
+	if IsValid(g_Scoreboard) then g_Scoreboard:Remove() end
 	if not IsValid(g_Scoreboard) then
 		g_Scoreboard = vgui.CreateFromTable(SCORE_BOARD)
 	end
@@ -470,3 +486,13 @@ function GM:ScoreboardHide()
 		g_Scoreboard:Hide()
 	end
 end
+
+-- Move the voice panel area to above the HUD (but no need to change the panel completely)
+hook.Add("InitPostEntity", "Ritual_MoveVoiceVGUI", function()
+	timer.Simple(0.1, function()
+		if IsValid(g_VoicePanelList) then
+			g_VoicePanelList:SetPos(ScrW() - 300, 100)
+			g_VoicePanelList:SetSize(250, ScrH() - 300)
+		end
+	end)
+end)

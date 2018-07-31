@@ -77,7 +77,7 @@ function SWEP:Initialize()
 end
 
 local function UpdateAnimations(self)
-	if self.Sprinting then
+	if self.Owner:IsSprinting() then
 		self.NextIdleAct = self:GetHasDoll() and ACT_VM_SPRINT_IDLE or ACT_VM_IDLE -- replace with non-doll sprint act later
 	--elseif self.Owner:KeyDown(IN_WALK) then
 		--self.NextIdleAct = self:GetHasDoll() and ACT_VM_IDLE_DEPLOYED_1 or ACT_VM_IDLE
@@ -336,8 +336,7 @@ if SERVER then
 		end
 
 		if self.Owner:KeyDown(IN_FORWARD) then
-			local vel = self.Owner:GetVelocity():Length2D()
-			if self.Owner:KeyDown(IN_SPEED) and vel > 100 then
+			if self.Owner:IsSprinting() and self.Owner:GetVelocity():Length2D() > 100 then
 				if not self.Sprinting then
 					self.Sprinting = true
 					UpdateAnimations(self)
@@ -683,7 +682,7 @@ if CLIENT then
 		draw.SimpleTextOutlined("Alt", "Ritual_HUDFont_Small", posx1 - space*2 - size2 - 10, posy1 + size2 + 10, self.CanPeek and color_white or col_disabled, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
 
 		if hasdoll then
-			if pct > 0 then
+			if self.Owner:GetAmmoCount(ammo_type) > 0 then
 				surface.SetMaterial(chargedoll)
 				surface.DrawTexturedRect(posx1, posy1, size1, size1)
 				draw.SimpleTextOutlined("LMB", "Ritual_HUDFont_Large", posx1 + size1 - 15, posy1 + size1, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 3, color_black)
@@ -700,7 +699,7 @@ if CLIENT then
 	local peekmaxdist = 100
 	local peeksidedist = 20
 	local peekdist = 0.2 -- +20% extra (based on peekmaxdist)
-	local peeklerpspeed = 3
+	local peeklerpspeed = 5
 	local peekang = 70
 	local peekroll = 20	
 	function SWEP:CalcView(ply, pos, ang, fov)
@@ -792,13 +791,31 @@ if CLIENT then
 		local topeek = self.CanPeek and ply:KeyDown(IN_WALK)
 		if topeek ~= self.Peeking then
 			self.Peeking = topeek
+			self.PeekAngle = self.PeekTargetAngle
 		end
 		if not self.PeekLerp then self.PeekLerp = 0 end
-		if self.Peeking and self.PeekLerp < 1 then self.PeekLerp = math.Approach(self.PeekLerp, 1, FrameTime()*peeklerpspeed) elseif
-			not self.Peeking and self.PeekLerp > 0 then self.PeekLerp = math.Approach(self.PeekLerp, 0, -FrameTime()*peeklerpspeed) end
+		if self.Peeking and self.PeekLerp < 1 then
+			self.PeekLerp = math.Approach(self.PeekLerp, 1, FrameTime()*peeklerpspeed)
+		elseif not self.Peeking and self.PeekLerp > 0 then
+			self.PeekLerp = math.Approach(self.PeekLerp, 0, -FrameTime()*peeklerpspeed)
+		end
 
-		return LerpVector(self.PeekLerp, pos, self.PeekTargetPos or pos), LerpAngle(self.PeekLerp, ang, self.PeekTargetAngle or ang)
+		return LerpVector(self.PeekLerp, pos, self.PeekTargetPos or pos), LerpAngle(self.PeekLerp, ang, self.PeekAngle or ang)
 	end
+	
+	-- Lets you look around while peeking
+	hook.Add("InputMouseApply", "Ritual_PeekLook", function(cmd,x,y,ang)
+		local wep = LocalPlayer():GetWeapon("ritual_human")
+		if IsValid(wep) and wep.Peeking and wep.PeekAngle then			
+			wep.PeekAngle = wep.PeekAngle + Angle(y/120,-x/60,0)
+			return true
+		end
+	end)
+	
+	-- Stop drawing the viewmodel while peeking (so you don't see dislocated arms)
+	--[[function SWEP:PreDrawViewModel()
+		if self.Peeking then return true end
+	end]]
 end
 
 local firerate = 0.05

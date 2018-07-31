@@ -48,7 +48,7 @@
 		-	Space checking
 		-	Distance condition?
 		-	Handling of multiple demons (all place or just one? Vote? Place one each?)
-	/	Evil Rate sensing
+	X	Evil Rate sensing
 
 	HUMANS
 	*	Models (Human models. Randomly colored or all blue?)
@@ -56,7 +56,7 @@
 		✓	Logic
 		✓	Model/Viewmodel
 		✓	Worldmodel (draw doll in hand)
-	/	Evil Rate influence (fade)
+	X	Evil Rate influence (fade)
 	✓	Corner peeking
 	✓	Jumpscares
 
@@ -91,13 +91,13 @@
 	✓	Circle completed effect
 	✓	Louder jumpscare sounds
 	✓	Scream and Shout
-		-	Demon sounds
+		✓	Demon sounds
 		-	Play round begin logic
 	/	Proper red eye drawing (over fog)
-	/	Custom flashlights (brighter to counter color correction)
-		/	Demon "night vision" flashlight?
-	-	Adjust color correction
-	-	Sky nighttime/color
+	X	Custom flashlights (brighter to counter color correction)
+		✓	Demon "night vision" flashlight?
+	✓	Adjust color correction
+	✓	Sky nighttime/color
 	✓	Hints/Guides
 	✓	Demon viewmodel adjustments
 		✓	Idle animation improvements (finger anim + slower speed)
@@ -105,16 +105,16 @@
 	✓	Human viewmodel adjustments
 		✓	Throw anim?
 		✓	Slightly faster sprint anim
-	?	Fix ritual circle model clipping?
+	/	Fix ritual circle model clipping?
 	✓	Suicide respawn during preround
-	/	Demon respawn conditions?
+	✓	Demon respawn conditions?
 	✓	Fix circle summon particle effect
 			Appears to be same Control point (1) for color and swirl center
 	✓	Show hints at round begin
 	-	Make hints able to have a "max shown" option (or a disable console command?)
 	✓	Keeper player model global playermodel
 	✓	Dying with doll drops it
-	-	Dropped doll reset burn effect
+	*	Dropped doll reset burn effect
 	✓	Molotov fire sound effect
 	✓	Spectate on join mid-round
 	✓	Spectate by suiciding within 3 seconds of round restart
@@ -127,14 +127,14 @@
 
 	POTENTIAL
 	✓	Shiver horror aspect
-	-	Rising stinger horror aspect
+	^	Rising stinger horror aspect
 	✓	Doll whisper horror aspect
 	-	Round over music
 	✓	Demon sounds
-	-	Human spawn voicelines
+	*	Human spawn voicelines
 	✓	Additional particle effects?
 		✓	Circle completed particles rising
-		/	Demon appear effect (initial at round)
+		X	Demon appear effect (initial at round)
 		✓	Doll charged viewmodel effect
 		✓	Candlefire
 		✓	Doll charged world model effect?
@@ -144,14 +144,14 @@
 	-	Remove debug prints and functions
 	✓	material models/player/panicritual/keeper_hooded_red_tattered_parts has a normal map and an envmapmask.  Must use $normalmapalphaenvmapmask.
 			for all Demon materials
-	-	Remove unused weapons and lua files
+	*	Remove unused weapons and lua files
 	✓	Package demon model as global playermodel
 		✓	Add black variant
-	-	Test packaging of "content" (maybe needs to be moved to addon root)
+	✓	Test packaging of "content" (maybe needs to be moved to addon root)
 	✓	Menu logo
 	✓	Menu icon
 	✓	Workshop thumbnail
-	-	PLAYTEST
+	*	PLAYTEST
 			Adjustments after
 	-	Workshop screenshots
 	-	Workshop description
@@ -161,16 +161,15 @@
 	✓	Circle candle distance (sphere distance)
 	✓	Doll cleanse time (4 sec)
 	✓	Doll charge time (10 sec)
-	-	Fade duration, kill radius, cooldown, speed (LMB)
-		-	Stun/slowdown?
-		-	Some type of punishment
-		-	Fog fadein? Some way of making it easier for the human to get away
+	✓	Fade duration, kill radius, cooldown, speed (LMB)
+		✓	Stun/slowdown? (stamina lock)
+		^	Some type of punishment
+		X	Fog fadein? Some way of making it easier for the human to get away
 	✓	Leap kill radius, cooldown, power (4 sec cooldown)
 	✓	Doll charge ammo, DPS (Damage upped to 4, DPS: 80)
 	✓	Demon base movement speed (slightly slower)
 	✓	Human base movement speed (same)
-	-	Color correction & Fog
-		-	
+	✓	Color correction & Fog
 	-	Anti-camping?
 		-	Throw dolls to cleanse
 		-	
@@ -186,7 +185,23 @@
 
 	✓	Demon break windows and breakables
 	-	Fix jumpscare inconsistencies
-	-	Fix circles/candles left over?
+		-	Perhaps just simplify jumpscare algorithm to just be timed + distance?
+		-	Using dot product to ensure direction
+	?	Fix circles/candles left over?
 	-	Fix charged doll viewmodel particles
-	-	More hints for abilities
+	✓	More hints for abilities
+	-	Show Leap charge bar
+	-	Spectating HUD
+		-	Using spectated player for HUD elements?
+		-	Using spectated player for jumpscares etc?
+	-	ConVar settings for balance variables?
+	X	Fixing red eyes horror aspect? (replaced by insanity aspect)
+	-	Laser beam sound?
+	-	Fix infinite circle placement bug (maybe some failsafe?)
+	✓	Scoreboard ping
+	✓	Voice chat hooks/logic
+	✓	Voice chat HUD move
+	✓	Insanity horror aspect
+	✓	Peek look around
+	✓	Multi-resolution HUD (No change was needed) (bars can overlap at smaller resolutions)
 ]]

@@ -35,6 +35,21 @@ addjumpscaregroup(150, {
 	"panicritual/jumpscares/close2.wav",
 })
 
+local function playjumpscare(dist)
+	local index
+	for k,v in ipairs(jumpscares.distances) do
+		if v > dist then index = k break end
+	end
+	if index then
+		local sounds = jumpscares.sounds[index]
+		local s = sounds[math.random(#sounds)]
+		surface.PlaySound(s)
+		surface.PlaySound(s) -- Play it twice for a bit more 'oomph'
+	end
+end
+
+
+
 --[[-------------------------------------------------------------------------
 	Scare Configuration
 ---------------------------------------------------------------------------]]
@@ -48,9 +63,9 @@ addjumpscaregroup(150, {
 -- Result: Player can only be scared once, however a second demon can double-scare if he is closer than Intensity Immunity
 -- Alternative: Only per-player immunity? Second demon can always double scare?
 
-local LocationForgetTime = 3 -- The amount of time of not having seen a demon to "forget" his location
-local DoubleScareDistance = function(x) return x < 100 and 0 or x/3 end -- How close the same demon has to be to double-scare
-local ScareResetTime = 15 -- The time until scares completely reset distance-wise
+--local LocationForgetTime = 3 -- The amount of time of not having seen a demon to "forget" his location
+--local DoubleScareDistance = function(x) return x < 100 and 0 or x/3 end -- How close the same demon has to be to double-scare
+--local ScareResetTime = 15 -- The time until scares completely reset distance-wise
 
 --[[-------------------------------------------------------------------------
 	VERSION 1: 	Players can only scare after 5 seconds of not being seen
@@ -76,16 +91,7 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 				local dist = ply:GetPos():Distance(lp:GetPos())
 
 				if not scares[ply].double or scares[ply].double > dist then
-					local index
-					for k,v in ipairs(jumpscares.distances) do
-						if v > dist then index = k break end
-					end
-					if index then
-						local sounds = jumpscares.sounds[index]
-						surface.PlaySound(sounds[math.random(#sounds)])
-						scares[ply].double = DoubleScareDistance(dist)
-						scares[ply].reset = ct + ScareResetTime
-					end
+					playjumpscare(dist)
 				end
 			end
 
@@ -103,7 +109,7 @@ end)]]
 				Constant distance calculation, but better gameplay-wise
 ---------------------------------------------------------------------------]]
 
-local scares = {}
+--[[local scares = {}
 local eye = Material("sprites/redglow1")
 local eyecolor = Color(255,0,0)
 local eyesize = 5
@@ -124,16 +130,7 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 				end
 
 				if scares[ply].next > dist then --and lp:GetAimVector():Dot((ppos - lpos):GetNormalized()) > 0 then
-					local index
-					for k,v in ipairs(jumpscares.distances) do
-						if v > dist then index = k break end
-					end
-					if index then
-						local sounds = jumpscares.sounds[index]
-						local s = sounds[math.random(#sounds)]
-						surface.PlaySound(s)
-						surface.PlaySound(s) -- Play it twice for a bit more 'oomph'
-					end
+					playjumpscare(dist)
 				end
 
 				scares[ply].reset = ct + ScareResetTime
@@ -145,10 +142,10 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 		render.SetMaterial(eye)
 		local eyes = ply:GetAttachment(ply:LookupAttachment("eyes"))
 		render.DrawSprite(eyes.Pos, 10, 10, eyecolor)
-		--[[local le = ply:GetAttachment(ply:LookupAttachment("lefteye"))
+		local le = ply:GetAttachment(ply:LookupAttachment("lefteye"))
 		render.DrawSprite(le.Pos, 10, 10, eyecolor)
 		local re = ply:GetAttachment(ply:LookupAttachment("righteye"))
-		render.DrawSprite(re.Pos, 10, 10, eyecolor)]]
+		render.DrawSprite(re.Pos, 10, 10, eyecolor)
 
 		local eyes = ply:GetAttachment(ply:LookupAttachment("eyes"))
 		if eyes then
@@ -161,6 +158,42 @@ hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
 			render.DrawSprite(lefteyepos, eyesize, eyesize, eyecolor)
 			render.DrawSprite(righteyepos, eyesize, eyesize, eyecolor)
 			cam.End2D()
+		end
+	end
+end)]]
+
+--[[-------------------------------------------------------------------------
+	VERSION 3:	Scares happen once then goes on cooldown per demon
+				Player is completely immune to scares from that demon for this time
+				Very simple and efficient, however no double scares
+
+				Simple and efficient
+---------------------------------------------------------------------------]]
+
+local ScareDelay = 7 -- Seconds before you can get scared again by that demon
+local DotMinimum = 0.6 -- The dot product before the Demon is considered in view
+
+local scares = {}
+hook.Add("PostPlayerDraw", "Ritual_Jumpscares", function(ply)
+	if GAMEMODE.RoundState ~= ROUND_PREPARE and ply:IsDemon() then
+		-- Jumpscares
+		local lp = LocalPlayer()
+		if lp:IsHuman() and lp:Alive() then
+			local lpos = lp:GetPos()
+			local ppos = ply:GetPos()
+			local dot = EyeAngles():Forward():Dot((ppos - lpos):GetNormalized())
+			if dot >= DotMinimum then
+				local vis, tr = ply:VisibleTo(lp, true) -- Use calcview cam
+				if vis then
+					local ct = CurTime()	
+					local dist = ppos:Distance(lpos)
+					if not scares[ply] or scares[ply] < ct then
+						playjumpscare(dist)
+					end
+					scares[ply] = ct + ScareDelay -- constantly increase while visible
+					hook.Run("Ritual_DemonVisible", ply,dot,dist)
+				end
+			end
 		end
 	end
 end)

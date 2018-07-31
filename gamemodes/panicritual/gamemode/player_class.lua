@@ -8,7 +8,6 @@ local function datatables(self)
 	self.Player:NetworkVar("Bool", 0, "RitualFading")
 	self.Player:NetworkVar("Bool", 1, "RitualTormented")
 	self.Player:NetworkVar("Float", 0, "RitualStamina")
-	print("Running datatables")
 end
 
 hook.Add("OnEntityCreated", "Ritual_InstallPlayerDataTables", function(ent)
@@ -136,6 +135,12 @@ function META:GetStamina()
 		return self.Ritual_Stamina or 100 -- last known one
 	end
 end
+
+local oldsprint = META.IsSprinting
+function META:IsSprinting()
+	if self.Ritual_Sprinting ~= nil then return self.Ritual_Sprinting else return oldsprint(self) end
+end
+
 if SERVER then
 	util.AddNetworkString("ritual_stamina_lock")
 	function META:StaminaLock(time, reduction)

@@ -128,8 +128,8 @@ if SERVER then
 
 		GAMEMODE:SetRoundState(ROUND_ONGOING)
 		
-		self:SendHint("human_roundstart", team.GetPlayers(TEAM_HUMANS))
-		self:SendHint("demon_roundstart", team.GetPlayers(TEAM_DEMONS))
+		GAMEMODE:SendHint("human_roundstart", team.GetPlayers(TEAM_HUMANS))
+		GAMEMODE:SendHint("demon_roundstart", team.GetPlayers(TEAM_DEMONS))
 	end
 
 	local mins = Vector(-10,-10,1)

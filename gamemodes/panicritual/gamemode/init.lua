@@ -66,3 +66,20 @@ function GM:PlayerSetHandsModel( ply, ent )
 	end
 
 end
+
+function GM:PlayerCanHearPlayersVoice(listener, talker)
+	local alltalk = GetConVar("sv_alltalk"):GetInt()
+	if alltalk > 0 then return true, alltalk == 2 end -- Alltalk is on, anyone can hear anyone
+	-- Alltalk is 2 and it will be 3D
+
+	local lteam = listener:Team()
+	local tteam = talker:Team()
+	-- Living Demons can only be heard by other demons, no 3D
+	if tteam == TEAM_DEMONS and talker:Alive() then return lteam == TEAM_DEMONS, false end
+	
+	-- Dead people can be heard by other dead players, no 3D
+	if not talker:Alive() then return not listener:Alive(), false end
+	
+	-- Everyone else can be heard by anyone, but in 3D
+	return true, true
+end

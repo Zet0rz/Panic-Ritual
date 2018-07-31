@@ -17,17 +17,27 @@ end
 function PLAYER:IsHuman() return self:Team() == TEAM_HUMANS end
 function PLAYER:IsDemon() return self:Team() == TEAM_DEMONS end
 
-function PLAYER:VisibleTo(ply)
-	local tr = util.TraceLine({
-		start = ply:EyePos(),
-		endpos = self:EyePos(),
-		mask = MASK_SHOT,
-		filter = ply,
-	})
-
-	return tr.Hit and tr.Entity == self, tr
+local bonestocheck = {
+	"ValveBiped.Bip01_Head1",
+	"ValveBiped.Bip01_Pelvis",
+}
+function PLAYER:VisibleTo(ply, c)
+	local epos = c and CLIENT and EyePos() or ply:EyePos()
+	for k,v in pairs(bonestocheck) do
+		local bid = self:LookupBone(v)
+		if bid then
+			local tr = util.TraceLine({
+				start = epos,
+				endpos = self:GetBonePosition(bid),
+				mask = MASK_SHOT,
+				filter = ply,
+			})
+			if tr.Entity == self then return true, tr end
+		end
+	end
+	return false
 end
 
-function PLAYER:CanSee(ply)
-	return ply:VisibleTo(self)
+function PLAYER:CanSee(ply, c)
+	return ply:VisibleTo(self, c)
 end

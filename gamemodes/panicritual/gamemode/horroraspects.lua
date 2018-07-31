@@ -59,7 +59,7 @@ if SERVER then
 end
 
 if CLIENT then
-	local fogminrange = 800
+	local fogminrange = 600
 	local fogmaxrange = 5000
 	local fadesound = Sound("panicritual/roundstart.wav")
 	local ccRound = {
@@ -175,7 +175,12 @@ if CLIENT then
 		}
 	end)
 
-	-- Shiver horror aspect
+	--[[-------------------------------------------------------------------------
+	Shiver Horror Aspect:	When the Demon looks in your direction, the closer he is
+							the more tension you feel. Play a rising stinger that increases
+							pitch based on distance and dot product of demon's aim
+							and towards yourself
+	---------------------------------------------------------------------------]]
 	local nextcheck = 0
 	local mindist = 300
 	local maxdist = 600
@@ -214,5 +219,41 @@ if CLIENT then
 			end
 			nextcheck = CurTime() + checkdelay
 		end
+	end)
+	
+	--[[-------------------------------------------------------------------------
+	Insanity Horror Aspect:		Looking directly at a demon in sight distorts screen
+								Empowers corner peeking by allowing players to detect demons
+								through fog. Called from jumpscares rendering hook to save calculations
+								(uses same dot, distance, visibility checks)
+	---------------------------------------------------------------------------]]
+	local MaxInsanityRefract = 0.1
+	local MinDot = 0.98
+	local FadeInSpeed = 0.05
+	local FadeOutDelay = 0.2
+	local FadeOutSpeed = 0.05
+
+	local insanityamount = 0
+	local insanityfadeout = 0
+	hook.Add("Ritual_DemonVisible", "Ritual_InsanityAspect", function(demon, dot, dist)
+		if dot >= MinDot then
+			insanityfadeout = CurTime() + FadeOutDelay
+		end
+	end)
+	-- 2000 dist: 0.998 -- Find a function for these to make it more reliable based on range?
+	-- 1000 dist: 0.995
+	-- 500 dist: 0.992
+	-- 100 dist: 0.97
+	-- 50 dist: 0.75
+	hook.Add("RenderScreenspaceEffects", "Ritual_InsanityAspect", function()
+		local ct = CurTime()
+		if ct < insanityfadeout and insanityamount < MaxInsanityRefract then
+			insanityamount = math.Approach(insanityamount, MaxInsanityRefract, FrameTime()*FadeInSpeed)
+		elseif ct > insanityfadeout and insanityamount > 0 then
+			insanityamount = math.Approach(insanityamount, 0, -FrameTime()*FadeOutSpeed)
+		end
+		DrawMaterialOverlay("panicritual/insanity_overlay_dodge", (math.sin(CurTime()/2))*insanityamount)
+		--util.ScreenShake(EyePos(), insanityamount*5, insanityamount*5, FadeOutDelay, 50)
+		--DrawMotionBlur(0.4, 4*insanityamount, 0.5*insanityamount)
 	end)
 end
