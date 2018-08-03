@@ -41,3 +41,25 @@ end
 function PLAYER:CanSee(ply, c)
 	return ply:VisibleTo(self, c)
 end
+
+if SERVER then
+	util.AddNetworkString("ritual_progress")
+	-- Networked to cl_hud.lua
+	function PLAYER:DisplayProgress(time, start)
+		net.Start("ritual_progress")
+			net.WriteBool(true)
+			net.WriteFloat(time)
+			if start then
+				net.WriteBool(true)
+				net.WriteFloat(start)
+			else
+				net.WriteBool(false)
+			end
+		net.Send(self)
+	end
+	function PLAYER:HideProgress()
+		net.Start("ritual_progress")
+			net.WriteBool(false)
+		net.Send(self)
+	end
+end

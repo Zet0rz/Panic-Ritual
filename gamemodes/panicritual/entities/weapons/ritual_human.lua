@@ -77,7 +77,7 @@ function SWEP:Initialize()
 end
 
 local function UpdateAnimations(self)
-	if self.Owner:IsSprinting() then
+	if self.Sprinting then
 		self.NextIdleAct = self:GetHasDoll() and ACT_VM_SPRINT_IDLE or ACT_VM_IDLE -- replace with non-doll sprint act later
 	--elseif self.Owner:KeyDown(IN_WALK) then
 		--self.NextIdleAct = self:GetHasDoll() and ACT_VM_IDLE_DEPLOYED_1 or ACT_VM_IDLE
@@ -436,11 +436,11 @@ if CLIENT then
 				self.REyeEffect = nil
 			else
 				if viewmodel then
-					self.LEyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT, viewmodel:LookupAttachment("doll_l_eye_vm"), Vector(0,0,0))
+					self.LEyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT_FOLLOW, viewmodel:LookupAttachment("doll_l_eye_vm"), Vector(0,0,0))
 					self.LEyeEffect:SetControlPoint(1, Vector(1,0.5,1))
 					self.LEyeEffect:SetShouldDraw(false)
 
-					self.REyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT, viewmodel:LookupAttachment("doll_r_eye_vm"), Vector(0,0,0))
+					self.REyeEffect = CreateParticleSystem(viewmodel, pcf, PATTACH_POINT_FOLLOW, viewmodel:LookupAttachment("doll_r_eye_vm"), Vector(0,0,0))
 					self.REyeEffect:SetControlPoint(1, Vector(1,0.5,1))
 					self.REyeEffect:SetShouldDraw(false)
 				else
@@ -465,7 +465,10 @@ if CLIENT then
 			self.REyeEffect:SetControlPoint(2, Vector(self.EvilScale,0,0))
 
 			if viewmodel then
-				local pos,ang = viewmodel:GetBonePosition(viewmodel:LookupBone("Doll"))
+				-- This code makes it more accurate; but it falls behind on lower-end systems
+				-- Enabling this code requires setting PATTACH_POINT (no FOLLOW) on the effects on viewmodel
+				
+				--[[local pos,ang = viewmodel:GetBonePosition(viewmodel:LookupBone("Doll"))
 				local wpos,wang = LocalToWorld(Vector(-1.2,4,-3), Angle(130,0,-80), pos, ang)
 				local f,r,u = wang:Forward(),wang:Right(),wang:Up()
 
@@ -475,7 +478,7 @@ if CLIENT then
 				self.LEyeEffect:SetControlPoint(0, lepos)
 				self.LEyeEffect:SetControlPointOrientation(0,f,r,u)
 				self.REyeEffect:SetControlPoint(0, repos)
-				self.REyeEffect:SetControlPointOrientation(0,f,r,u)
+				self.REyeEffect:SetControlPointOrientation(0,f,r,u)]]
 				self.LEyeEffect:Render()
 				self.REyeEffect:Render()
 
@@ -514,7 +517,8 @@ if CLIENT then
 				self.ChargedEffect:StopEmission(false, true)
 				self.ChargedEffect = nil
 			else
-				self.ChargedEffect = CreateParticleSystem(viewmodel or self, "ritual_doll_charged", PATTACH_POINT_FOLLOW, (viewmodel or self):GetAttachment((viewmodel or self):LookupAttachment("doll_l_eye_vm")))
+				local att = (viewmodel or self):LookupAttachment("doll_body")
+				self.ChargedEffect = CreateParticleSystem(viewmodel or self, "ritual_doll_charged", PATTACH_POINT_FOLLOW, att)
 				self.ChargedEffect:SetIsViewModelEffect(not not viewmodel)
 				self.ChargedEffect:SetShouldDraw(not viewmodel)
 				self.ChargedEffect:SetControlPoint(1, Vector(0.7,1,1))
@@ -522,8 +526,12 @@ if CLIENT then
 			end
 		end
 
-		if viewmodel and self.ChargedEffect then
-			--self.ChargedEffect:Render()
+		if self.ChargedEffect then
+			local pct = self.Owner:GetAmmoCount(ammo_type)/chargeammo
+			self.ChargedEffect:SetControlPoint(2, Vector(pct,0,0))
+			if viewmodel then
+				self.ChargedEffect:Render()
+			end
 		end
 	end
 
@@ -592,8 +600,14 @@ if CLIENT then
 
 				self.NextParticle = ct + particledelay
 			end]]
-		elseif self.LEyeEffect then
-			drawdolleffects(self) -- This removes the effect
+		else
+			if self.LEyeEffect then
+				drawdolleffects(self) -- This removes the effect
+			end
+			if self.ShootHands then
+				self.ShootHands = false
+				self.Owner:ManipulateBoneAngles(self.Owner:LookupBone("ValveBiped.Bip01_R_Hand"), Angle(0,0,0))
+			end
 		end
 	end
 
@@ -699,7 +713,7 @@ if CLIENT then
 	local peekmaxdist = 100
 	local peeksidedist = 20
 	local peekdist = 0.2 -- +20% extra (based on peekmaxdist)
-	local peeklerpspeed = 5
+	local peeklerpspeed = 3
 	local peekang = 70
 	local peekroll = 20	
 	function SWEP:CalcView(ply, pos, ang, fov)
@@ -813,9 +827,9 @@ if CLIENT then
 	end)
 	
 	-- Stop drawing the viewmodel while peeking (so you don't see dislocated arms)
-	--[[function SWEP:PreDrawViewModel()
+	function SWEP:PreDrawViewModel()
 		if self.Peeking then return true end
-	end]]
+	end
 end
 
 local firerate = 0.05

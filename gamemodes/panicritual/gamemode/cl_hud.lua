@@ -1,6 +1,3 @@
-
-print("hi")
-
 local hide = {
 	["CHudHealth"] = true,
 	["CHudBattery"] = true,
@@ -136,6 +133,7 @@ end)
 
 -- Target ID on humans
 local human_mask = Material("panicritual/hud/human_mask.png", "noclamp")
+local demon_hood = Material("panicritual/hud/demon_hood.png", "noclamp") -- For spectating
 local masksize = 75
 local lower = 150
 local targetidfont = "Ritual_HUDFont"
@@ -177,9 +175,14 @@ local targetdelay = 0.25
 local targetident, targetidfunc
 local nexttargetiddraw = 0
 local demonlight
+local color_red = Color(255,0,0)
 function GM:HUDPaint()
 	local w,h = ScrW(), ScrH()
 	local ypad = h - (pad + iconsize)
+	
+	local lp = LocalPlayer()
+	local ply = lp:GetObserverTarget()
+	if not IsValid(ply) or not ply:IsPlayer() then ply = lp end
 
 	-- Health bar backdrop
 	surface.SetDrawColor(0,0,0,250)
@@ -188,7 +191,7 @@ function GM:HUDPaint()
 
 	-- Health bar front
 	surface.SetDrawColor(150,150,150)
-	local pct = LocalPlayer():Health()/LocalPlayer():GetMaxHealth()
+	local pct = ply:Health()/ply:GetMaxHealth()
 	surface.DrawTexturedRectUV(iconsize + pad - 25, ypad + iconsize2 - 2, 500*pct, barthickness, 0,0,pct,1)
 
 	surface.SetDrawColor(255,255,255)
@@ -205,11 +208,11 @@ function GM:HUDPaint()
 	draw.SimpleTextOutlined("x"..alive, "Ritual_HUDFont", pad + pad2 + iconsize + iconsize2, ypad + pad2 + iconsize2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 2, color_black)
 
 	-- Team Icon
-	surface.SetMaterial(LocalPlayer():IsDemon() and team_demon or team_human)
+	surface.SetMaterial(ply:IsDemon() and team_demon or team_human)
 	surface.DrawTexturedRect(pad + padinner, ypad + padinner, iconsize - 2*padinner, iconsize - 2*padinner)
 
 	-- Draw demon progress world icons
-	if LocalPlayer():IsDemon() then
+	if LocalPlayer():IsDemon() then -- Only do this for the actual demon
 		for k,v in pairs(circle_ents) do
 			if not IsValid(k) then circle_ents[k] = nil else
 				local pos = k:GetPos() + offset
@@ -233,7 +236,9 @@ function GM:HUDPaint()
 				end
 			end
 		end
+	end
 
+	if ply:IsDemon() then
 		if not demonlight then
 			demonlight = ProjectedTexture()
 			demonlight:SetTexture("vgui/white")
@@ -241,19 +246,17 @@ function GM:HUDPaint()
 			demonlight:SetFOV(170)
 			demonlight:SetBrightness(0.2)
 			demonlight:SetColor(Color(255,100,100))
-			print("Created demonlight")
 		end
 		demonlight:SetPos(EyePos())
 		demonlight:SetAngles(EyeAngles())
 		demonlight:Update()
 	elseif demonlight then
 		demonlight:Remove()
-		print("removed demonlight")
 		demonlight = nil
 	end
 
 	-- Target ID
-	local tr = LocalPlayer():GetEyeTrace()
+	local tr = ply:GetEyeTrace()
 	local ct = CurTime()
 	local enttotarget = IsValid(tr.Entity) and targetids[tr.Entity:GetClass()] and tr.Entity or nil
 	if enttotarget ~= targetident then
@@ -264,6 +267,37 @@ function GM:HUDPaint()
 	if targetident and ct >= nexttargetiddraw then
 		local w2,h2 = w/2, h/2
 		targetidfunc(targetident,w,h,w2,h2)
+	end
+	
+	-- Spectate HUD
+	if lp:GetObserverMode() ~= OBS_MODE_NONE then
+		if ply ~= lp then -- The observed view is another player
+			local name = ply:Nick()
+			if #name >= 20 then name = string.sub(name, 0, 17).."..." end
+			surface.SetFont(targetidfont)
+			local w2,h2 = w/2, h/2
+			local lower2 = 380
+			local w3,h3 = surface.GetTextSize(name)
+			w3 = w3 + masksize*1.2
+			
+			surface.SetDrawColor(50,50,50,150)
+			surface.DrawRect(w2 - 295, h2 + lower2 - 35, 595, 70)
+			surface.SetDrawColor(50,50,50,200)
+			surface.DrawRect(w2 - 200, h2 + lower2 - 35, 400, 70)
+
+			surface.SetDrawColor(255,255,255,255)
+			surface.SetMaterial(ply:IsDemon() and demon_hood or human_mask)
+			surface.DrawTexturedRect(w2 - w3/2, h2 - masksize/2 + lower2, masksize, masksize)
+			draw.SimpleTextOutlined(name, targetidfont, w2 - w3/2 + masksize, h2 + lower2, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 2, color_black)
+		
+			draw.SimpleTextOutlined("< RMB", targetidfont, w2 - 210, h2 + lower2, color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER, 2, color_black)
+			draw.SimpleTextOutlined("LMB >", targetidfont, w2 + 210, h2 + lower2, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 2, color_black)
+		end
+		
+		surface.SetDrawColor(50,50,50,150)
+		surface.DrawRect(w - 180, 748, 130, 50)
+		draw.SimpleTextOutlined("Hints", targetidfont, w - 100, 790, color_red, TEXT_ALIGN_RIGHT, TEXT_ALIGN_BOTTOM, 2, color_black)
+		draw.SimpleTextOutlined("F1", targetidfont, w - 60, 790, color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_BOTTOM, 2, color_black)
 	end
 end
 
@@ -469,7 +503,7 @@ local SCORE_BOARD = {
 SCORE_BOARD = vgui.RegisterTable(SCORE_BOARD, "DPanel")
 
 function GM:ScoreboardShow()
-	if IsValid(g_Scoreboard) then g_Scoreboard:Remove() end
+	--if IsValid(g_Scoreboard) then g_Scoreboard:Remove() end
 	if not IsValid(g_Scoreboard) then
 		g_Scoreboard = vgui.CreateFromTable(SCORE_BOARD)
 	end
@@ -495,4 +529,34 @@ hook.Add("InitPostEntity", "Ritual_MoveVoiceVGUI", function()
 			g_VoicePanelList:SetSize(250, ScrH() - 300)
 		end
 	end)
+end)
+
+-- Progress bar HUD element
+local progressbar = Material("panicritual/hud/charge_bar.png", "noclamp")
+
+local bartime
+local barprogress
+net.Receive("ritual_progress", function()
+	if net.ReadBool() then
+		bartime = net.ReadFloat()
+		barprogress = CurTime()
+		if net.ReadBool() then
+			barprogress = barprogress - net.ReadFloat() -- Sets the start time that far back
+		end
+	else
+		bartime = nil
+	end
+end)
+
+hook.Add("HUDPaint", "Ritual_ProgressBar", function()
+	if bartime then
+		local diff = (CurTime() - barprogress)/bartime
+		surface.SetMaterial(progressbar)
+		surface.SetDrawColor(0,0,0)
+		surface.DrawTexturedRect(ScrW()/2 - 150, ScrH()/2 + 100, 300, 25)
+		surface.SetDrawColor(255,255,255)
+		surface.DrawTexturedRectUV(ScrW()/2 - 150, ScrH()/2 + 100, 300*diff, 25, 0, 0, diff, 1)
+		
+		if diff >= 1 then bartime = nil end -- Remove when done
+	end
 end)

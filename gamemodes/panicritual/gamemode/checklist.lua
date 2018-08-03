@@ -9,18 +9,18 @@
 
 	CORE
 	✓	Teams set up
-	*	Round system
+	✓	Round system
 	✓	Team picker (Weighted Random Demon)
-	*	Round Effects
-		*	Color Correction
+	✓	Round Effects
+		✓	Color Correction
 		✓	Fog
 	✓	Post-round logic (Round restarts after 10 sec)
 
 	OBJECTIVE
-	*	Ritual Circle
+	✓	Ritual Circle
 		✓	Entity
 		✓	Light Candles/Progress indicators
-		-	Completion indicator
+		✓	Completion indicator
 		?	Variable required total number of circles
 	✓	Dolls
 		✓	Dropped Entity
@@ -44,14 +44,16 @@
 	✓	Model (BO3 Zombies Keeper)
 	✓	Weapon
 	/	Invisibility ability?
+			Fog replaces it
 	✓	Ritual Circle placement (New weapon or same weapon? Or no weapon at all?)
-		-	Space checking
-		-	Distance condition?
-		-	Handling of multiple demons (all place or just one? Vote? Place one each?)
+		✓	Space checking
+		✓	Distance condition?
+		/	Handling of multiple demons (all place or just one? Vote? Place one each?)
+				Any demon can place any, 3 = round start (there'll always be 1 demon anyway)
 	X	Evil Rate sensing
 
 	HUMANS
-	*	Models (Human models. Randomly colored or all blue?)
+	✓	Models (Human models. Randomly colored or all blue?)
 	✓	Weapon (No-doll. Maybe merged with doll?)
 		✓	Logic
 		✓	Model/Viewmodel
@@ -111,7 +113,7 @@
 	✓	Fix circle summon particle effect
 			Appears to be same Control point (1) for color and swirl center
 	✓	Show hints at round begin
-	-	Make hints able to have a "max shown" option (or a disable console command?)
+	/	Make hints able to have a "max shown" option (or a disable console command?)
 	✓	Keeper player model global playermodel
 	✓	Dying with doll drops it
 	*	Dropped doll reset burn effect
@@ -144,7 +146,7 @@
 	-	Remove debug prints and functions
 	✓	material models/player/panicritual/keeper_hooded_red_tattered_parts has a normal map and an envmapmask.  Must use $normalmapalphaenvmapmask.
 			for all Demon materials
-	*	Remove unused weapons and lua files
+	✓	Remove unused weapons and lua files
 	✓	Package demon model as global playermodel
 		✓	Add black variant
 	✓	Test packaging of "content" (maybe needs to be moved to addon root)
@@ -184,16 +186,16 @@
 		✓	Volume fade
 
 	✓	Demon break windows and breakables
-	-	Fix jumpscare inconsistencies
-		-	Perhaps just simplify jumpscare algorithm to just be timed + distance?
-		-	Using dot product to ensure direction
+	✓	Fix jumpscare inconsistencies
+		✓	Perhaps just simplify jumpscare algorithm to just be timed + distance?
+		✓	Using dot product to ensure direction
 	?	Fix circles/candles left over?
-	-	Fix charged doll viewmodel particles
+	✓	Fix charged doll viewmodel particles
 	✓	More hints for abilities
-	-	Show Leap charge bar
-	-	Spectating HUD
-		-	Using spectated player for HUD elements?
-		-	Using spectated player for jumpscares etc?
+	✓	Show Leap charge bar
+	✓	Spectating HUD
+		✓	Using spectated player for HUD elements?
+		✓	Using spectated player for jumpscares etc?
 	-	ConVar settings for balance variables?
 	X	Fixing red eyes horror aspect? (replaced by insanity aspect)
 	-	Laser beam sound?
@@ -204,4 +206,22 @@
 	✓	Insanity horror aspect
 	✓	Peek look around
 	✓	Multi-resolution HUD (No change was needed) (bars can overlap at smaller resolutions)
+	
+	HINTS
+	✓	F1 Hints Menu
+	✓	Hint additional Net capabilities
+	✓	Hint ConVar
+	-	Additional Hints
+		✓	Insanity aspect
+	-	New Hint icons
+		✓	Whispers (Doll with wind out of mouth)
+		✓	Burning Eyes (Doll with fire eyes)
+		✓	Stamina (Foot, or energy bolt)
+		✓	Tension (Looking over shoulder)
+		✓	Charging Dolls (arms rising)
+		✓	Doll Reset (doll in flames)
+		✓	Cleansing Dolls (doll with rings)
+		✓	Killing Humans (soul death pose)
+		✓	Red Fog (misty stuff)
+		✓	Insanity Aspect
 ]]

@@ -256,7 +256,7 @@ function DEMONS:SetupDataTables()
 end
 
 function DEMONS:Loadout()
-	self.Player:Give("ritual_demon_possess")
+	self.Player:Give("ritual_demon")
 end
 
 local demonmodel = "models/player/panicritual/keeper_hooded_red.mdl"
@@ -277,7 +277,7 @@ function DEMONS:ApplyMoveSpeeds()
 	self.Player:SetRunSpeed(self.RunSpeed)
 end
 
-if not ConVarExists("ritual_afktime") then CreateConVar("ritual_afktime", 60, {FCVAR_SERVER_CAN_EXECUTE, FCVAR_ARCHIVE}, "The amount of time with Demons no moving to slay them. Set to 0 to disable.") end
+if not ConVarExists("ritual_afktime") then CreateConVar("ritual_afktime", 60, {FCVAR_SERVER_CAN_EXECUTE, FCVAR_ARCHIVE, FCVAR_NOTIFY}, "The amount of time with Demons no moving to slay them. Set to 0 to disable.") end
 local time = GetConVar("ritual_afktime")
 
 function DEMONS:StartMove(mv, cmd)

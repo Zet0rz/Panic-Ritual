@@ -1,5 +1,5 @@
-local lifetime = 0.1 -- Time with total effect (rising particles)
-local riseparticledelay = 0.01
+local lifetime = 1 -- Time with total effect (rising particles)
+local particledelay = 0.01
 local numswirls = 10
 
 local soundeffect = Sound("ambient/levels/citadel/portal_beam_shoot5.wav")
@@ -79,15 +79,10 @@ function EFFECT:Think()
 			particle:SetRoll(math.Rand(0, 36)*10)
 			particle:SetRollDelta(math.Rand(5,10))
 			
-			self.NextRiseParticle = CurTime() + riseparticledelay
-			return true
+			self.NextRiseParticle = CurTime() + particledelay
 		end
 	end
-	if self.KillTime < ct then
-		return false
-	else
-		return true
-	end
+	return self.KillTime > ct
 end
 
 function EFFECT:Render()

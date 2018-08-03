@@ -1,12 +1,10 @@
 
-print("hints")
-
-local function pickorgetval(val)
+local function pickorgetval(val, data)
 	local t = type(val)
 	if t == "table" then
 		return val[math.random(#val)]
 	elseif t == "function" then
-		return t()
+		return val(data) -- Pass data read from AdditionalNet along (often nil)
 	else
 		return val
 	end
@@ -15,7 +13,6 @@ end
 local hints = {}
 function GM:AddHint(id, tbl)
 	hints[id] = tbl
-	print("adding", id)
 end
 function GM:GetHint(id) return hints[id] end
 function GM:GetHints(id) return hints end
@@ -33,47 +30,63 @@ if SERVER then
 	function GM:SendHint(id, recipient)
 		net.Start("Ritual_Hint")
 			net.WriteString(id)
+			local hint = self:GetHint(id)
+			if hint and hint.AdditionalNet then hint.AdditionalNet() end -- Send additional net data
 		net.Send(recipient)
 	end
 	function GM:BroadcastHint(id, recipient)
 		net.Start("Ritual_Hint")
 			net.WriteString(id)
+			local hint = self:GetHint(id)
+			if hint and hint.AdditionalNet then hint.AdditionalNet() end
 		net.Broadcast()
 	end
 
+	local function customhint(tbl)
+		if tbl.Text then
+			net.WriteBool(true)
+			net.WriteString(tbl.Text)
+		else
+			net.WriteBool(false)
+		end
+
+		if tbl.Icon then
+			net.WriteBool(true)
+			net.WriteString(tbl.Icon)
+		else
+			net.WriteBool(false)
+		end
+
+		if tbl.Header then
+			net.WriteBool(true)
+			net.WriteString(tbl.Header)
+		else
+			net.WriteBool(false)
+		end
+
+		net.WriteUInt(tbl.Position or HINT_BOTTOMCENTER, 2)
+	end
+	
 	function GM:SendCustomHint(tbl, recipient)
 		net.Start("Ritual_Hint_Custom")
-			if tbl.Text then
-				net.WriteBool(true)
-				net.WriteString(tbl.Text)
-			else
-				net.WriteBool(false)
-			end
-
-			if tbl.Icon then
-				net.WriteBool(true)
-				net.WriteString(tbl.Icon)
-			else
-				net.WriteBool(false)
-			end
-
-			if tbl.Header then
-				net.WriteBool(true)
-				net.WriteString(tbl.Header)
-			else
-				net.WriteBool(false)
-			end
-
-			net.WriteUInt(tbl.Position or HINT_BOTTOMCENTER)
+			customhint(tbl)
 		net.Send(recipient)
+	end
+	
+	function GM:BroadcastCustomHint(tbl)
+		net.Start("Ritual_Hint_Custom")
+			customhint(tbl)
+		net.Broadcast()
 	end
 end
 
 if CLIENT then
+	if not ConVarExists("ritual_hints") then CreateClientConVar("ritual_hints", 1, true, false, "Enables Hints triggered by the Gamemode.") end
+
 	local shownhints = {}
 
 	local maxwidth = 400
-	local function hintbox(tbl)
+	local function hintbox(tbl, data)
 		local panel = vgui.Create("DPanel")
 		--panel:SetSize(maxwidth,200)
 		panel:SetBackgroundColor(Color(50,50,50,250))
@@ -83,7 +96,7 @@ if CLIENT then
 
 		if tbl.Header and tbl.Header ~= "" then
 			panel.Header = panel:Add("DLabel")
-			local str = type(tbl.Header) == "table" and tbl.Header[math.random(#tbl.Header)] or tbl.Header
+			local str = pickorgetval(tbl.Header, data)
 			panel.Header:SetText(str)
 			panel.Header:SetTextColor(Color(255,100,100))
 			panel.Header:SetFont("Ritual_ScrollAlive")
@@ -100,7 +113,7 @@ if CLIENT then
 
 		if tbl.Text then
 			panel.Text = panel:Add("DLabel")
-			local str = type(tbl.Text) == "table" and tbl.Text[math.random(#tbl.Text)] or tbl.Text
+			local str = pickorgetval(tbl.Text, data)
 			panel.Text:SetSize(maxwidth,200)
 			panel.Text:SetText(str)
 			panel.Text:SetTextColor(Color(225,225,225))
@@ -119,7 +132,7 @@ if CLIENT then
 		
 		if tbl.Icon then
 			panel.Icon = panel:Add("DImage")
-			local str = type(tbl.Icon) == "table" and tbl.Icon[math.random(#tbl.Icon)] or tbl.Icon
+			local str = pickorgetval(tbl.Icon, data)
 			panel.Icon:SetImage(str)
 			local size = math.Min(width, height)
 			panel.Icon:SetSize(size, size)
@@ -153,7 +166,7 @@ if CLIENT then
 		return panel
 	end
 
-	local function floatingpanel(tbl)
+	local function floatingpanel(tbl, data)
 		local panel = vgui.Create("DPanel")
 		panel:SetBackgroundColor(Color(0,0,0,0))
 
@@ -161,7 +174,7 @@ if CLIENT then
 
 		if tbl.Header and tbl.Header ~= "" then
 			panel.Header = panel:Add("Panel")
-			local str = pickorgetval(tbl.Header)
+			local str = pickorgetval(tbl.Header, data)
 			
 			surface.SetFont("Ritual_HUDFont")
 			local x,y = surface.GetTextSize(str)
@@ -180,7 +193,7 @@ if CLIENT then
 
 		if tbl.Text then
 			panel.Text = panel:Add("Panel")
-			local str = pickorgetval(tbl.Text)
+			local str = pickorgetval(tbl.Text, data)
 			
 			surface.SetFont("Ritual_ScrollAlive")
 			local x,y = surface.GetTextSize(str)
@@ -199,7 +212,7 @@ if CLIENT then
 		
 		if tbl.Icon then
 			panel.Icon = panel:Add("DImage")
-			local str = pickorgetval(tbl.Icon)
+			local str = pickorgetval(tbl.Icon, data)
 			panel.Icon:SetImage(str)
 			local size = math.Min(width, height)
 			panel.Icon:SetSize(size, size)
@@ -224,32 +237,32 @@ if CLIENT then
 	end
 
 	local areafuncs = {
-		[HINT_BOTTOMBOX] = function(tbl)
-			local panel = hintbox(tbl)
+		[HINT_BOTTOMBOX] = function(tbl, data)
+			local panel = hintbox(tbl, data)
 			local width, height = panel:GetSize()
 
 			panel:SetPos(ScrW()/2 - width/2, ScrH() - height - 200)
 			panel.HintType = HINT_BOTTOMBOX
 			return panel
 		end,
-		[HINT_CENTERBOX] = function(tbl)
-			local panel = hintbox(tbl)
+		[HINT_CENTERBOX] = function(tbl, data)
+			local panel = hintbox(tbl, data)
 			local width, height = panel:GetSize()
 			
 			panel:SetPos(ScrW()/2 - width/2, ScrH()/2 - height/2)
 			panel.HintType = HINT_CENTERBOX
 			return panel
 		end,
-		[HINT_BOTTOM] = function(tbl)
-			local panel = floatingpanel(tbl)
+		[HINT_BOTTOM] = function(tbl, data)
+			local panel = floatingpanel(tbl, data)
 			local width, height = panel:GetSize()
 			
 			panel:SetPos(ScrW()/2 - width/2, ScrH()/4*3 - height/2)
 			panel.HintType = HINT_BOTTOM
 			return panel
 		end,
-		[HINT_CENTER] = function(tbl)
-			local panel = floatingpanel(tbl)
+		[HINT_CENTER] = function(tbl, data)
+			local panel = floatingpanel(tbl, data)
 			local width, height = panel:GetSize()
 			
 			panel:SetPos(ScrW()/2 - width/2, ScrH()/2 - height/2)
@@ -258,26 +271,40 @@ if CLIENT then
 		end,
 	}
 	
-	local function displayhint(tbl)
+	local function displayhint(tbl, data)
 		local area = tbl.Position or HINT_BOTTOMBOX
 		if shownhints[area] then shownhints[area]:Remove() end
 
-		if tbl[1] then tbl = pickorgetval(tbl) end -- A table of hints numerically indexed
-		if tbl.Function then tbl = tbl.Function() or tbl end
+		if tbl[1] then tbl = pickorgetval(tbl, data) end -- A table of hints numerically indexed
+		if tbl.Function then tbl = tbl.Function(data) or tbl end
 		if not tbl.Text and not tbl.Icon and not tbl.Header then return end
-		shownhints[area] = areafuncs[area](tbl)
+		shownhints[area] = areafuncs[area](tbl, data)
 	end
 
-	function PLAYER:SendHint(id)
+	function PLAYER:SendHint(id, data)
+		if not self == LocalPlayer() then return end -- Simulate shared by ignoring non-localplayer calls
+		
 		local hint = GAMEMODE:GetHint(id)
-		if hint then displayhint(hint) end
+		if hint and (hint.Unblockable or GetConVar("ritual_hints"):GetBool()) then displayhint(hint, data) end
 	end
 
 	net.Receive("Ritual_Hint", function()
 		local id = net.ReadString()
 		if id and IsValid(LocalPlayer()) then
-			LocalPlayer():SendHint(id)
+			local hint = GAMEMODE:GetHint(id)
+			local data
+			if hint and hint.AdditionalNet then data = hint.AdditionalNet() end
+			LocalPlayer():SendHint(id, data)
 		end
+	end)
+	
+	net.Receive("Ritual_Hint_Custom", function()
+		local tbl = {}
+		if net.ReadBool() then tbl.Text = net.ReadString() end
+		if net.ReadBool() then tbl.Icon = net.ReadString() end
+		if net.ReadBool() then tbl.Header = net.ReadString() end
+		tbl.Position = net.ReadUInt(2)
+		displayhint(tbl)
 	end)
 
 	hook.Add("PostMapCleanup", "Ritual_CleanupHints", function()
@@ -286,12 +313,162 @@ if CLIENT then
 		end
 		shownhints = {}
 	end)
+	
+	-- Hint F1 menu
+	local f1categories = {}
+	function GM:AddF1HintCategory(name, hints)
+		local found
+		for k,v in pairs(f1categories) do
+			if v.Name == name then
+				found = v
+				break
+			end
+		end
+		if found then
+			table.Add(found.Hints, hints) -- Merge them
+		else
+			table.insert(f1categories, {Name = name, Hints = hints})
+		end
+		if g_HintMenu then g_HintMenu:PopulateHints() end
+	end
+	
+	
+	local function recreatef1()
+		if g_HintMenu then g_HintMenu:Remove() g_HintMenu = nil end
+		local width = 300
+		local p = vgui.Create("DPanel")
+		p:SetSize(width,700)
+		p:SetBackgroundColor(Color(25,25,25))
+		
+		local header = vgui.Create("DPanel", p)
+		header:SetSize(width, 50)
+		header:SetBackgroundColor(Color(75,0,0))
+		header:Dock(TOP)
+		local ht = header:Add("DLabel")
+		ht:Dock(FILL)
+		ht:SetText("HINTS")
+		ht:SetFont("Ritual_HUDFont_Large")
+		ht:SetContentAlignment(5)
+		local ch = header:Add("DImageButton")
+		local b = GetConVar("ritual_hints"):GetBool()
+		ch:SetImage(b and "panicritual/hud/checkbox_on.png" or "panicritual/hud/checkbox_off.png")
+		ch:SetSize(50,50)
+		ch:Dock(RIGHT)
+		ch.Think = function(self)
+			local b = GetConVar("ritual_hints"):GetBool()
+			if self.CheckState ~= b then
+				self:SetImage(b and "panicritual/hud/checkbox_on.png" or "panicritual/hud/checkbox_off.png")
+				self.CheckState = b
+			end
+		end
+		ch.DoClick = function(self)
+			RunConsoleCommand("ritual_hints", GetConVar("ritual_hints"):GetBool() and "0" or "1")
+		end
+		
+		local ht1 = header:Add("DLabel")
+		ht1:SetText("In-game\n      hints")
+		ht1:SetContentAlignment(6)
+		ht1:Dock(RIGHT)
+		--ht1:SetPos(width - 90, 12)
+		ht1:SetSize(40,50)
+		
+		p.ScrollPanel = vgui.Create("DScrollPanel", p)
+		p.ScrollPanel:SetSize(width,100)
+		p.ScrollPanel:Dock(FILL)
+		p.HintList = vgui.Create("DListLayout", p.ScrollPanel)
+		p.HintList:Dock(FILL)
+		
+		function p:PopulateHints()
+			self.HintList:Clear()
+			local hints = {}
+			for k,v in pairs(f1categories) do
+				local s = self.HintList:Add("DListLayout")
+				s:SetWidth(width)
+				local l = s:Add("DLabel")
+				l:SetFont("Ritual_HUDFont")
+				l:SetText(v.Name)
+				l:SetSize(width,50)
+				l:SetZPos(-1)
+				l:DockMargin(15,0,0,0)
+				l:SetTextColor(Color(255,0,0))
+				
+				for k2,v2 in pairs(v.Hints) do
+					local hint = GAMEMODE:GetHint(v2)
+					if hint then
+						local p2 = s:Add("DPanel")
+						p2:SetSize(width, 50)
+						local i = p2:Add("DImage")
+						i:SetImage(pickorgetval(hint.Icon))
+						i:SetSize(50,40)
+						i:Dock(LEFT)
+						local h = p2:Add("DLabel")
+						h:SetText(pickorgetval(hint.Header))
+						h:SetFont("Ritual_ScrollAlive")
+						h:Dock(RIGHT)
+						h:SetSize(width - 70,50)
+						h:SetContentAlignment(4)
+						h:SetTextColor(Color(255,150,150))
+						
+						local b = p2:Add("DButton")
+						b.DoClick = function(self)
+							displayhint(hint)
+						end
+						b.Paint = function() end
+						b:SetText("")
+						b:SetSize(width,50)
+						
+						p2:SetBackgroundColor(Color(50,50,50))
+					end
+				end
+			end
+		end
+		
+		p.ScrollPanel:SetSize(width,100)
+		p.ScrollPanel:Rebuild()
+		
+		local bar = p.ScrollPanel:GetVBar()
+		bar:SetVisible(true)
+		bar.Paint = function(self,w,h)
+			surface.SetDrawColor(50,0,0,150)
+			surface.DrawRect(0,0,w,h)
+			surface.SetDrawColor(0,255,0,255)
+		end
+		bar.btnGrip.Paint = function(self,w,h)
+			surface.SetDrawColor(50,0,0,255)
+			surface.DrawRect(0,0,w,h)
+			surface.SetDrawColor(255,0,0,255)
+			
+			surface.DrawRect(0,0,w,2)
+			surface.DrawRect(0,2,2,h-2)
+			surface.DrawRect(w-2,2,2,h-2)
+			surface.DrawRect(2,h-2,w-4,2)
+		end
+		bar:SetHideButtons(true)
+		
+		p:PopulateHints()
+		g_HintMenu = p
+		g_HintMenu:SetPos(ScrW() - 350, 100)
+	end
+	
+	net.Receive("ritual_f1", function()
+		if not IsValid(g_HintMenu) then
+			recreatef1()
+		end
+		g_HintMenu:SetVisible(not g_HintMenu:IsVisible())
+		gui.EnableScreenClicker(g_HintMenu:IsVisible())
+	end)
 else
 	function PLAYER:SendHint(id)
 		GAMEMODE:SendHint(id,self)
 	end
 	function PLAYER:SendCustomHint(tbl)
 		GAMEMODE:SendCustomHint(tbl,self)
+	end
+	
+	util.AddNetworkString("ritual_f1")
+	function GM:ShowHelp(ply)
+		net.Start("ritual_f1")
+		net.Send(ply)
 	end
 end
 
@@ -350,7 +527,7 @@ GM:AddHint("demon_spawn", {
 GM:AddHint("demon_objective_humans", {
 	Text = "You have materialized! Find and kill all Humans before they can exorcise you by cleansing the dolls at the circles! The number of Humans left is shown above your health bar.",
 	Icon = "panicritual/hud/human_mask.png",
-	Header = "The hunt is on!",
+	Header = "The Hunt is on!",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("demon_ability_fade", {
@@ -367,7 +544,7 @@ GM:AddHint("demon_ability_leap", {
 })
 GM:AddHint("demon_ability_stamina", {
 	Text = "Your Stamina is limited and Humans sprint faster than you. Save your Stamina for the chase, and walk while seeking; Humans are under the same limitations and walk slower than you.",
-	Icon = "panicritual/hud/team_demon.png",
+	Icon = "panicritual/hud/stamina.png",
 	Header = "Stamina",
 	Position = HINT_BOTTOMBOX,
 })
@@ -379,7 +556,7 @@ GM:AddHint("demon_objective_circleindicators", {
 })
 GM:AddHint("demon_ability_killing", {
 	Text = "Your abilities lets you enter your Void Form, becoming non-solid to everyone else. Exiting Void Form inside a Human will rip their Soul free from their body, killing them!",
-	Icon = "panicritual/hud/muted.png",
+	Icon = "panicritual/hud/human_death.png",
 	Header = "Killing Humans",
 	Position = HINT_BOTTOMBOX,
 })
@@ -400,37 +577,37 @@ GM:AddHint("demon_roundstart", {
 
 GM:AddHint("human_ability_dollwhisper", {
 	Text = "Listen out for the whispers from the Doll you're carrying. It is louder the closer you are to a Ritual Circle you can cleanse at.",
-	Icon = "panicritual/hud/human_doll.png",
+	Icon = "panicritual/hud/doll_whisper.png",
 	Header = "Whispers",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("human_ability_dolleyes", {
 	Text = "Notice the burning eyes of the Doll any Human is carrying. It burns brighter the closer the Demon is to that Doll!",
-	Icon = "panicritual/hud/human_doll.png",
+	Icon = "panicritual/hud/doll_evil.png",
 	Header = "Evil Influence",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("human_objective_dollcharging", {
 	Text = "When 2 of the 3 Ritual Circles have been completed, particles will appear on them. This means you can Charge their Dolls, giving you the only weapon you have against the Demon!",
-	Icon = "panicritual/hud/human_dollcharge.png",
+	Icon = "panicritual/hud/doll_charge.png",
 	Header = "Charging Dolls",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("human_objective_dollreset", {
 	Text = "Dropped Dolls will reset after not being picked up for too long. It will return to its Circle, and the Circle's candles will all be reset if it hasn't already been completed.",
-	Icon = "panicritual/hud/human_nodoll.png",
+	Icon = "panicritual/hud/doll_reset.png",
 	Header = "Doll Reset",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("human_ability_stamina", {
 	Text = "Your stamina is limited. Humans walk slower than Demons, but sprint faster. Save your stamina for being chased, and move around slowly to avoid getting found!",
-	Icon = "panicritual/hud/team_human.png",
+	Icon = "panicritual/hud/stamina.png",
 	Header = "Stamina",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("human_objective_fog", {
 	Text = "When the Demon materializes, it brings along with it a dense fog. However be aware that the Demon can see through it!",
-	Icon = "panicritual/hud/team_demon.png",
+	Icon = "panicritual/hud/demon_fog.png",
 	Header = "Red Fog",
 	Position = HINT_BOTTOMBOX,
 })
@@ -454,14 +631,41 @@ GM:AddHint("human_objective_candle", {
 })
 GM:AddHint("human_ability_tension", {
 	Text = "Humans have an innate ability to sense danger approaching. When the Demon is looking in your direction, you will hear your tension rising the closer it gets.",
-	Icon = "panicritual/hud/unmuted.png",
-	Header = "Tension",
+	Icon = "panicritual/hud/tension.png",
+	Header = "Tension Rising",
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("human_objective_chargeddoll", {
 	Text = "A Charged Doll is able to shoot a beam of light which can kill the Demon! Watch out for its energy, when it runs out it will go back to its Circle! It can be recharged at its home Circle.",
 	Icon = "panicritual/hud/human_dollcharge.png",
 	Header = "Charged Dolls",
+	Position = HINT_BOTTOMBOX,
+})
+
+GM:AddHint("human_objective_preround", {
+	Text = "During Preround, the Demon has not yet fully materialized and cannot interact with Humans. The Demon must position all Ritual Circles so materialize, starting the round.",
+	Icon = "panicritual/hud/human_nodoll.png",
+	Header = "Before the Round",
+	Position = HINT_BOTTOMBOX,
+})
+
+GM:AddHint("human_objective_survival", {
+	Text = "The Demon's goal is to kill all Humans before they can kill it. The amount of Humans left alive is shown on the scroll above the health bar in the bottom left.",
+	Icon = "panicritual/hud/demon_hood.png",
+	Header = "The Hunt is On",
+	Position = HINT_BOTTOMBOX,
+})
+
+GM:AddHint("human_objective_dolls", {
+	Text = "The Humans need to cleanse 2/3 Dolls to be able to Charge a Doll, letting them kill the Demon. Dolls are cleansed by standing in other Ritual Circles while holding them. The last Circle is always the home Circle.",
+	Icon = "panicritual/hud/doll_ground.png",
+	Header = "Cleansing Dolls",
+	Position = HINT_BOTTOMBOX,
+})
+GM:AddHint("human_ability_insanity", {
+	Text = "You can feel when you are facing darkness. Looking directly at a clear line of sight to the Demon causes your view to distort, even beyond the fog.",
+	Icon = "panicritual/hud/insanity.png",
+	Header = "Insanity's Edge",
 	Position = HINT_BOTTOMBOX,
 })
 
@@ -472,11 +676,15 @@ local humanspectatehints = {
 	"human_ability_dollwhisper",
 	"human_ability_stamina",
 	"human_ability_tension",
+	"human_ability_insanity",
 	"human_objective_candle",
 	"human_objective_chargeddoll",
 	"human_objective_dollcharging",
 	"human_objective_dollreset",
-	"human_objective_fog"
+	"human_objective_fog",
+	"human_objective_preround",
+	"human_objective_survival",
+	"human_objective_dolls",
 }
 -- These explain Human abilities and are shown when a Human dies and spectates (well, also Demon but that'd end the round)
 GM:AddHint("human_spectator_hint", {
@@ -492,6 +700,7 @@ GM:AddHint("demon_circle_nospace", {
 	Position = HINT_CENTER,
 	Time = 3,
 	Fade = 1,
+	Unblockable = true,
 })
 
 GM:AddHint("demon_circle_tooclose", {
@@ -500,13 +709,25 @@ GM:AddHint("demon_circle_tooclose", {
 	Position = HINT_CENTER,
 	Time = 3,
 	Fade = 1,
+	Unblockable = true,
 })
 
 GM:AddHint("afk", {
-	Text = "If you don't press any buttons for 60 seconds, you will be slain.",
+	Text = function(data) -- Here data is passed as an int (from AdditionalNet)
+		return "If you haven't pressed any buttons for "..(data or "UNKNOWN").." seconds, you will be slain."
+	end,
 	Icon = "panicritual/hud/muted.png",
 	Header = "You are going AFK",
 	Position = HINT_BOTTOMBOX,
+	Unblockable = true,
+	AdditionalNet = function()
+		if SERVER then
+			net.WriteInt(GetConVar("ritual_afktime"):GetInt(), 12) -- Send the time along
+		else
+			return net.ReadInt(12) -- returns as data passed to functions in this hint
+			-- Note: No data is passed if sent from client; always check for nil
+		end
+	end,
 })
 
 GM:AddHint("demon_circle_time", {
@@ -557,3 +778,34 @@ GM:AddHint("noone_win", {
 	},
 	Position = HINT_CENTERBOX,
 })
+
+-- Populate the hint menu
+if CLIENT then
+	GM:AddF1HintCategory("Objective", {
+		"human_objective_preround",
+		"human_objective_survival",
+		"human_objective_dolls",
+		"human_objective_candle",
+		"human_objective_dollreset",
+		"human_objective_dollcharging",
+		"human_objective_chargeddoll",
+	})
+	
+	GM:AddF1HintCategory("Human Abilities", {
+		"human_ability_cornerpeek",
+		"human_ability_stamina",
+		"human_ability_tension",
+		"human_ability_insanity",
+		"human_ability_dolleyes",
+		"human_ability_dollwhisper",
+		"human_ability_dollthrow",
+	})
+	
+	GM:AddF1HintCategory("Demon Abilities", {
+		"demon_ability_killing",
+		"demon_ability_fade",
+		"demon_ability_leap",
+		"demon_ability_stamina",
+		"human_objective_fog",
+	})
+end
