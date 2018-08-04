@@ -82,6 +82,24 @@ surface.CreateFont("Ritual_ScrollAlive", {
 	outline = false,
 })
 
+surface.CreateFont("Ritual_ScrollAlive_Small", {
+	font = "Haunt AOE",
+	extended = false,
+	size = 24,
+	weight = 500,
+	blursize = 0,
+	scanlines = 0,
+	antialias = true,
+	underline = false,
+	italic = false,
+	strikeout = false,
+	symbol = false,
+	rotary = false,
+	shadow = false,
+	additive = false,
+	outline = false,
+})
+
 surface.CreateFont("Ritual_Demons", {
 	font = "October Crow",
 	extended = false,

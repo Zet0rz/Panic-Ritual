@@ -83,3 +83,6 @@ function GM:PlayerCanHearPlayersVoice(listener, talker)
 	-- Everyone else can be heard by anyone, but in 3D
 	return true, true
 end
+
+-- These shouldn't really be changed, but they are fun to play with
+if not ConVarExists("ritual_demon_count") then CreateConVar("ritual_demon_count", 1, {FCVAR_SERVER_CAN_EXECUTE}, "Sets the number of Demons. It is recommended to only be 1.") end

@@ -8,6 +8,7 @@ local function datatables(self)
 	self.Player:NetworkVar("Bool", 0, "RitualFading")
 	self.Player:NetworkVar("Bool", 1, "RitualTormented")
 	self.Player:NetworkVar("Float", 0, "RitualStamina")
+	self.Player:NetworkVar("Bool", 2, "NoWithCollidePlayers")
 end
 
 hook.Add("OnEntityCreated", "Ritual_InstallPlayerDataTables", function(ent)

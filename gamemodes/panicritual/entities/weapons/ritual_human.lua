@@ -41,6 +41,7 @@ local wmaxdist = 1000 -- How far away from mindist scale reaches 0
 local wupdatedelay = 1 -- How often to run the distance check
 
 local dollcleansesound = Sound("panicritual/doll_cleanse.wav")
+local dollchargesound = Sound("panicritual/doll_charged.wav")
 
 SWEP.Primary.ClipSize		= -1
 SWEP.Primary.DefaultClip	= -1
@@ -267,6 +268,7 @@ if SERVER then
 		doll:Pickup(self.Owner)
 		self:Charge()
 		self:PlayActAndWait(ACT_VM_PICKUP) -- Replace with charge anim
+		self.Owner:EmitSound(dollchargesound)
 	end
 
 	function SWEP:StopDollCleanse(circle)
@@ -286,7 +288,7 @@ if SERVER then
 			self.RitualCircle:Progress(circle, self.Owner)
 		end
 
-		self:EmitSound(dollcleansesound)
+		self.Owner:EmitSound(dollcleansesound)
 		net.Start("ritual_doll_cleanse")
 			net.WriteEntity(self)
 		net.Broadcast()

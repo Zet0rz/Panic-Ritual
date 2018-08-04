@@ -1,12 +1,13 @@
 local PLAYER = FindMetaTable("Player")
 
 function PLAYER:GetNoCollidePlayers()
-	return self:GetNW2Bool("Ritual_NoCollidePlayers")
+	return self:GetNoWithCollidePlayers()
 end
 
 if SERVER then
 	function PLAYER:SetNoCollidePlayers(b)
-		self:SetNW2Bool("Ritual_NoCollidePlayers", b)
+		self:SetNoWithCollidePlayers(b)
+		self:SetCustomCollisionCheck(b)
 		self:CollisionRulesChanged()
 	end
 

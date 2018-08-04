@@ -94,7 +94,7 @@
 	✓	Louder jumpscare sounds
 	✓	Scream and Shout
 		✓	Demon sounds
-		-	Play round begin logic
+		✓	Play round begin logic
 	/	Proper red eye drawing (over fog)
 	X	Custom flashlights (brighter to counter color correction)
 		✓	Demon "night vision" flashlight?
@@ -206,9 +206,17 @@
 	✓	Insanity horror aspect
 	✓	Peek look around
 	✓	Multi-resolution HUD (No change was needed) (bars can overlap at smaller resolutions)
+	✓	Line of sight for fade attacks
+		✓	With ConVar to disable
+	-	Horror Aspect ConVars (Clientside? Serverside?)
+	✓	Fix cooldowns not showing
+	-	Boost whisper slightly
+	✓	Fix charge and cleanse sounds not playing
 	
 	HINTS
 	✓	F1 Hints Menu
+		-	Tab for showing ALL hints?
+		-	Explain that hints also appear in-game elegantly
 	✓	Hint additional Net capabilities
 	✓	Hint ConVar
 	-	Additional Hints
@@ -224,4 +232,10 @@
 		✓	Killing Humans (soul death pose)
 		✓	Red Fog (misty stuff)
 		✓	Insanity Aspect
+		
+	THIRD PERSON ANIMATION
+	-	Doll throw
+	-	Doll cleanse animation?
+	-	Doll charging animation?
+	✓	Doll shooting animation
 ]]

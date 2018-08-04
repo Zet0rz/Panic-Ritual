@@ -83,7 +83,7 @@ if SERVER then
 		self:SetRoundState(ROUND_INIT)
 
 		local players = player.GetAll()
-		local demons = PickWeightedRandomPlayers(players, 1) -- Pick 1 weighted random demon
+		local demons = PickWeightedRandomPlayers(players, GetConVar("ritual_demon_count"):GetInt() or 1) -- Pick 1 weighted random demon
 
 		local maindemon
 		for k,v in pairs(players) do

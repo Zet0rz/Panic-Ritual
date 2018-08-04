@@ -1,26 +1,7 @@
-
-print("screams")
-
 local PLAYER = FindMetaTable("Player")
 
 local malesoundpack = {
-	RoundBegin = {
-		"vo/npc/male01/answer18.wav",
-		"vo/npc/male01/answer29.wav",
-		"vo/npc/male01/answer36.wav",
-		"vo/npc/male01/gordead_ans01.wav",
-		"vo/npc/male01/gordead_ans02.wav",
-		"vo/npc/male01/gordead_ans03.wav",
-		"vo/npc/male01/gordead_ans04.wav",
-		"vo/npc/male01/gordead_ans05.wav",
-		"vo/npc/male01/gordead_ans06.wav",
-		"vo/npc/male01/gordead_ans09.wav",
-		"vo/npc/male01/gordead_ans10.wav",
-		"vo/npc/male01/gordead_ans11.wav",
-		"vo/npc/male01/gordead_ans12.wav",
-		"vo/npc/male01/gordead_ans13.wav",
-		"vo/npc/male01/gordead_ans14.wav",
-		"vo/npc/male01/gordead_ans15.wav",
+	RoundBeginTalk = {
 		"vo/npc/male01/question02.wav",
 		"vo/npc/male01/question04.wav",
 		"vo/npc/male01/question05.wav",
@@ -30,11 +11,31 @@ local malesoundpack = {
 		"vo/npc/male01/question20.wav",
 		"vo/npc/male01/question21.wav",
 		"vo/npc/male01/question25.wav",
+		"vo/npc/male01/gordead_ques06.wav",
+		"vo/npc/male01/gordead_ques10.wav",
 		"vo/npc/male01/gordead_ques13.wav",
 		"vo/npc/male01/gordead_ques14.wav",
 		"vo/npc/male01/gordead_ques16.wav",
 		"vo/npc/male01/doingsomething.wav",
 		"vo/npc/male01/waitingsomebody.wav",
+		"vo/npc/male01/gordead_ans01.wav",
+		"vo/npc/male01/gordead_ans02.wav",
+		"vo/npc/male01/gordead_ans06.wav",
+		"vo/npc/male01/gordead_ans14.wav",
+		"vo/npc/male01/gordead_ans15.wav",
+	},
+	RoundBeginResponse = {
+		"vo/npc/male01/answer18.wav",
+		"vo/npc/male01/answer29.wav",
+		"vo/npc/male01/answer36.wav",
+		"vo/npc/male01/gordead_ans03.wav",
+		"vo/npc/male01/gordead_ans04.wav",
+		"vo/npc/male01/gordead_ans05.wav",
+		"vo/npc/male01/gordead_ans09.wav",
+		"vo/npc/male01/gordead_ans10.wav",
+		"vo/npc/male01/gordead_ans11.wav",
+		"vo/npc/male01/gordead_ans12.wav",
+		"vo/npc/male01/gordead_ans13.wav",
 	},
 	Hurt = {
 		"vo/npc/male01/ow01.wav",
@@ -54,23 +55,7 @@ local malesoundpack = {
 }
 
 local femalesoundpack = {
-	RoundBegin = {
-		"vo/npc/female01/answer18.wav",
-		"vo/npc/female01/answer29.wav",
-		"vo/npc/female01/answer36.wav",
-		"vo/npc/female01/gordead_ans01.wav",
-		"vo/npc/female01/gordead_ans02.wav",
-		"vo/npc/female01/gordead_ans03.wav",
-		"vo/npc/female01/gordead_ans04.wav",
-		"vo/npc/female01/gordead_ans05.wav",
-		"vo/npc/female01/gordead_ans06.wav",
-		"vo/npc/female01/gordead_ans09.wav",
-		"vo/npc/female01/gordead_ans10.wav",
-		"vo/npc/female01/gordead_ans11.wav",
-		"vo/npc/female01/gordead_ans12.wav",
-		"vo/npc/female01/gordead_ans13.wav",
-		"vo/npc/female01/gordead_ans14.wav",
-		"vo/npc/female01/gordead_ans15.wav",
+	RoundBeginTalk = {
 		"vo/npc/female01/question02.wav",
 		"vo/npc/female01/question04.wav",
 		"vo/npc/female01/question05.wav",
@@ -80,11 +65,31 @@ local femalesoundpack = {
 		"vo/npc/female01/question20.wav",
 		"vo/npc/female01/question21.wav",
 		"vo/npc/female01/question25.wav",
+		"vo/npc/female01/gordead_ques06.wav",
+		"vo/npc/female01/gordead_ques10.wav",
 		"vo/npc/female01/gordead_ques13.wav",
 		"vo/npc/female01/gordead_ques14.wav",
 		"vo/npc/female01/gordead_ques16.wav",
 		"vo/npc/female01/doingsomething.wav",
 		"vo/npc/female01/waitingsomebody.wav",
+		"vo/npc/female01/gordead_ans01.wav",
+		"vo/npc/female01/gordead_ans02.wav",
+		"vo/npc/female01/gordead_ans06.wav",
+		"vo/npc/female01/gordead_ans14.wav",
+		"vo/npc/female01/gordead_ans15.wav",
+	},
+	RoundBeginResponse = {
+		"vo/npc/female01/answer18.wav",
+		"vo/npc/female01/answer29.wav",
+		"vo/npc/female01/answer36.wav",
+		"vo/npc/female01/gordead_ans03.wav",
+		"vo/npc/female01/gordead_ans04.wav",
+		"vo/npc/female01/gordead_ans05.wav",
+		"vo/npc/female01/gordead_ans09.wav",
+		"vo/npc/female01/gordead_ans10.wav",
+		"vo/npc/female01/gordead_ans11.wav",
+		"vo/npc/female01/gordead_ans12.wav",
+		"vo/npc/female01/gordead_ans13.wav",
 	},
 	Hurt = {
 		"vo/npc/male01/ow01.wav",
@@ -135,6 +140,7 @@ function PLAYER:DeathScream()
 	if sounds and sounds.Death then
 		local s = sounds.Death[math.random(#sounds.Death)]
 		self:EmitSound(s, 75, 100)
+		return SoundDuration(s), s
 	end
 end
 
@@ -143,13 +149,65 @@ function PLAYER:HurtScream()
 	if sounds and sounds.Hurt then
 		local s = sounds.Hurt[math.random(#sounds.Hurt)]
 		self:EmitSound(s, 75, 100)
+		return SoundDuration(s), s
 	end
 end
 
 function PLAYER:Talk()
 	local sounds = models[self:GetModel()]
-	if sounds and sounds.RoundBegin then
-		local s = sounds.RoundBegin[math.random(#sounds.RoundBegin)]
+	if sounds and sounds.RoundBeginTalk then
+		local s = sounds.RoundBeginTalk[math.random(#sounds.RoundBeginTalk)]
 		self:EmitSound(s, 75, 100)
+		return SoundDuration(s), s
 	end
+end
+
+function PLAYER:Respond()
+	local sounds = models[self:GetModel()]
+	if sounds and sounds.RoundBeginResponse then
+		local s = sounds.RoundBeginResponse[math.random(#sounds.RoundBeginResponse)]
+		self:EmitSound(s, 75, 100)
+		return SoundDuration(s), s
+	end
+end
+
+if SERVER then
+	-- Enabling with round
+	if not ConVarExists("ritual_roundtalk") then CreateConVar("ritual_roundtalk", 1, {FCVAR_ARCHIVE, FCVAR_SERVER_CAN_EXECUTE}, "Enables Humans talking at the start of the round.") end
+
+	local delay1 = 3
+	local delay2 = 0.5 -- after first finishes talking
+	local maxdistance = 500 -- Distance to initial player for responding player
+	hook.Add("Ritual_RoundPrepare", "Ritual_RoundBeginTalk", function()
+		if GetConVar("ritual_roundtalk"):GetBool() then
+			timer.Simple(delay1, function()
+				local humans = team.GetPlayers(TEAM_HUMANS)
+				if #humans > 0 then
+					local ply = humans[math.random(#humans)]
+					if ply:Alive() then
+						local d = ply:Talk()
+						if d then
+							timer.Simple(d + delay2, function()
+								local possible = {}
+								local pos = ply:GetPos()
+								for k,v in pairs(humans) do
+									if v:Alive() and v ~= ply then
+										local dist = v:GetPos():Distance(pos)
+										if dist <= maxdistance then
+											table.insert(possible, v)
+										end
+									end
+								end
+								
+								if #possible > 0 then
+									local ply2 = possible[math.random(#possible)]
+									ply2:Respond()
+								end
+							end)
+						end
+					end
+				end
+			end)
+		end
+	end)
 end

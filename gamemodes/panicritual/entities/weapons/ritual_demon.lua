@@ -268,20 +268,22 @@ if CLIENT then
 	local circles = Material("panicritual/hud/circle_doll.png", "noclamp")
 	local staminabar = Material("panicritual/hud/glyph_bar.png", "noclamp")
 
-	net.Receive("Ritual_DemonCooldowns", function()
-		local wep = LocalPlayer():GetWeapon("ritual_demon")
-		if IsValid(wep) then
-			local isleap = net.ReadBool()
-			local active = net.ReadBool()
+	timer.Simple(0, function() -- Apparently this fixes it??
+		net.Receive("Ritual_DemonCooldowns", function()
+			local wep = LocalPlayer():GetWeapon("ritual_demon")
+			if IsValid(wep) then
+				local isleap = net.ReadBool()
+				local active = net.ReadBool()
 
-			if isleap then
-				wep.LeapActive = active
-				if not active then wep.LeapCooldown = CurTime() end
-			else
-				wep.FadeActive = active
-				if not active then wep.FadeCooldown = CurTime() end
+				if isleap then
+					wep.LeapActive = active
+					if not active then wep.LeapCooldown = CurTime() end
+				else
+					wep.FadeActive = active
+					if not active then wep.FadeCooldown = CurTime() end
+				end
 			end
-		end
+		end)
 	end)
 
 	local color_disabled = Color(100,100,100)
@@ -344,7 +346,7 @@ if CLIENT then
 		if self.Owner.Ritual_StaminaLock then
 			local pct2 = (self.Owner.Ritual_StaminaLock - CurTime())/self.Owner.Ritual_StaminaLockTime
 			local pct3 = 1 - pct2
-			surface.SetDrawColor(100*pct3,0,0,pct2*255)
+			surface.SetDrawColor(100*pct3,0,0,pct2*500)
 			surface.DrawTexturedRectUV(w - 45 - pct3*600, h - 130, 600*pct3 + 10, 90, pct2, 0, 1, 1)
 			if pct3 >= 1 then
 				self.Owner.Ritual_StaminaLock = nil
@@ -418,6 +420,8 @@ if SERVER then
 	-- local accessors just to make it easier to change the networking interface
 	local function setfade(ply,b) ply:SetRitualFading(b) end
 	local function settorment(ply,b) ply:SetRitualTormented(b) end
+	
+	if not ConVarExists("ritual_kill_lineofsight") then CreateConVar("ritual_kill_lineofsight", 1, {FCVAR_ARCHIVE, FCVAR_SERVER_CAN_EXECUTE}, "Requires visible line of sight for the Demon's Void attacks to be able to kill.") end
 
 	function PLAYER:SetFading(b, killradius)
 		setfade(self,b)
@@ -433,7 +437,7 @@ if SERVER then
 				for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
 					if v:Alive() then
 						local dist = v:GetPos():Distance(pos)
-						if dist <= killradius then
+						if dist <= killradius and (not GetConVar("ritual_kill_lineofsight"):GetBool() or v:VisibleTo(self)) then
 							v:SoulTorment(self)
 						end
 					end
