@@ -55,7 +55,7 @@ if SERVER then
 
 	function ENT:Reset(fromcircle)
 		if not fromcircle then
-			self.RitualCircle:Reset()
+			if IsValid(self.RitualCircle) then self.RitualCircle:Reset() else self:Remove() end
 			return
 		end
 

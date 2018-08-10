@@ -71,6 +71,7 @@ function SWEP:Initialize()
 		self:SetCharged(false)
 		self:SetShooting(false)
 		self:SetEvilScale(0)
+		timer.Simple(0, function() if IsValid(self) and IsValid(self.Owner) then self.Owner:SetAmmo(0, ammo_type) end end)
 	else
 		self.Owner:ManipulateBoneAngles(self.Owner:LookupBone("ValveBiped.Bip01_R_Hand"), Angle(0,0,0))
 	end
@@ -177,7 +178,7 @@ if SERVER then
 	function SWEP:Drop() -- Drop this as a doll entity!
 		local doll = ents.Create("ritual_doll")
 		doll:TransferDollData(self)
-		self.RitualCircle:SetDoll(doll)
+		if IsValid(self.RitualCircle) then self.RitualCircle:SetDoll(doll) end
 		doll:SetPos(self.Owner:GetShootPos())
 		doll:SetAngles(self.Owner:GetAngles())
 		--doll:SetMoveType(MOVETYPE_VPHYSICS)
@@ -841,6 +842,7 @@ local breakables = {
 	["prop_physics"] = true,
 	["prop_physics_multiplayer"] = true,
 }
+SWEP.LaserDamage = 4
 function SWEP:PrimaryAttack()
 	if self.Owner:KeyPressed(IN_ATTACK) then
 		local tr = util.TraceLine({
@@ -862,7 +864,7 @@ function SWEP:PrimaryAttack()
 	if self:GetCharged() and (not self.NextShot or self.NextShot <= CurTime()) then
 		self:FireBullets({
 			Attacker = self.Owner,
-			Damage = 4,
+			Damage = self.LaserDamage,
 			TracerName = "ritual_dolllaser",
 			Dir = self.Owner:GetAimVector(),
 			Src = self.Owner:GetShootPos(),

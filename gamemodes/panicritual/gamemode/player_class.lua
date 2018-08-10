@@ -260,6 +260,12 @@ function DEMONS:Loadout()
 	self.Player:Give("ritual_demon")
 end
 
+-- These are also in lua/autorun/panicritual_playermodel.lua, but adding them here just as a fallback for the gamemode itself
+player_manager.AddValidModel("keeper_hooded_red", "models/player/panicritual/keeper_hooded_red.mdl")
+player_manager.AddValidModel("keeper_hooded_black", "models/player/panicritual/keeper_hooded_black.mdl")
+player_manager.AddValidHands("keeper_hooded_red", "models/player/panicritual/c_arms_keeper_hooded.mdl", 0, "00000000")
+player_manager.AddValidHands("keeper_hooded_black", "models/player/panicritual/c_arms_keeper_hooded.mdl", 1, "00000000")
+
 local demonmodel = "models/player/panicritual/keeper_hooded_red.mdl"
 local afktime = 60 -- seconds of not pressing any buttons to AFK
 local afkwarn = 30

@@ -278,8 +278,8 @@ function GM:HUDPaint()
 	local ct = CurTime()
 	local enttotarget = IsValid(tr.Entity) and targetids[tr.Entity:GetClass()] and tr.Entity or nil
 	if enttotarget ~= targetident then
-		targetident = tr.Entity
-		targetidfunc = tr.Entity and targetids[tr.Entity:GetClass()]
+		targetident = enttotarget
+		targetidfunc = enttotarget and targetids[enttotarget:GetClass()]
 		nexttargetiddraw = ct + targetdelay
 	end
 	if targetident and ct >= nexttargetiddraw then

@@ -110,9 +110,11 @@ local demonsoundpack = {
 		"panicritual/demon_damage1.wav",
 		"panicritual/demon_damage2.wav",
 	},
+	HurtPitch = {75,150},
 	Death = {
 		"panicritual/demon_death.wav",
 	},
+	DeathPitch = {75,125},
 }
 
 local models = {
@@ -139,7 +141,7 @@ function PLAYER:DeathScream()
 	local sounds = models[self:GetModel()]
 	if sounds and sounds.Death then
 		local s = sounds.Death[math.random(#sounds.Death)]
-		self:EmitSound(s, 75, 100)
+		self:EmitSound(s, 75, sounds.DeathPitch and math.random(unpack(sounds.DeathPitch)) or 100)
 		return SoundDuration(s), s
 	end
 end
@@ -148,7 +150,7 @@ function PLAYER:HurtScream()
 	local sounds = models[self:GetModel()]
 	if sounds and sounds.Hurt then
 		local s = sounds.Hurt[math.random(#sounds.Hurt)]
-		self:EmitSound(s, 75, 100)
+		self:EmitSound(s, 75, sounds.HurtPitch and math.random(unpack(sounds.HurtPitch)) or 100)
 		return SoundDuration(s), s
 	end
 end

@@ -122,7 +122,7 @@ function SWEP:PrimaryAttack()
 	--if self.Leaping then return end
 
 	local ct = CurTime()
-	if not self.FadeTime and ct < self.NextFade then return end
+	if self.FadeTime or (self.NextFade and ct < self.NextFade) then return end
 
 	--if self.CirclesToPlace then
 	if GAMEMODE.RoundState == ROUND_PREPARE then
@@ -486,6 +486,7 @@ if SERVER then
 	function PLAYER:SoulTorment(inflictor)
 		self.TormentInflictor = inflictor
 		self:SetCollisionGroup(COLLISION_GROUP_WEAPON)
+		self:Freeze(true)
 		settorment(self,true)
 
 		local e = EffectData()
@@ -499,6 +500,7 @@ if SERVER then
 	function PLAYER:ReleaseSoulTorment()
 		self.TormentInflictor = nil
 		self:SetCollisionGroup(COLLISION_GROUP_PLAYER)
+		self:Freeze(false)
 		settorment(self,false)
 	end
 

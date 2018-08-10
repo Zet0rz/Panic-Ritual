@@ -267,14 +267,14 @@ if SERVER then
 
 	function GM:Ritual_CanPickUpDoll(doll, wep, caller)
 		--print("This is run", doll.RitualCircle.Completed, doll:GetCharged())
-		return not doll.RitualCircle:GetCompleted() or doll:GetCharged()
+		return (IsValid(doll.RitualCircle) and not doll.RitualCircle:GetCompleted()) or doll:GetCharged()
 	end
 	--[[function GM:Ritual_DollPickedUp(doll, wep, caller)
 		wep:SetCharged(doll.RitualCircle.Completed)
 	end]]
 
 	function GM:Ritual_CanChargeDoll(doll, wep, caller)
-		return doll.RitualCircle:GetCompleted() and doll.RitualCircle:GetChargeable()
+		return (IsValid(doll.RitualCircle) and not doll.RitualCircle:GetCompleted()) and doll.RitualCircle:GetChargeable()
 	end
 
 	function GM:Ritual_AllowChargeable(circle)
@@ -376,11 +376,14 @@ if SERVER then
 	function GM:EntityTakeDamage(target, dmg)
 		if target:IsPlayer() then
 			if target:IsDemon() then
-				if dmg:GetInflictor():GetClass() == "ritual_human" then return false end -- Take that damage
-				if not dmg:IsDamageType(DMG_CRUSH) then return true end -- Otherwise only take crush damage (for safety reasons)
+				-- Only take damage by "ritual_human" or crush damage (for safety with map traps, avoid getting stuck)
+				local wep = dmg:GetInflictor()
+				if wep:GetClass() == "ritual_human" then
+					if wep.LaserDamage then dmg:SetDamage(wep.LaserDamage) end
+				elseif not dmg:IsDamageType(DMG_CRUSH) then return true end
 			end
 			if not dmg:IsDamageType(DMG_PARALYZE) then
-				if dmg:GetDamage() > target:Health() then
+				if dmg:GetDamage() >= target:Health() then
 					target:DeathScream()
 				else
 					if not target.NextHurtSound or CurTime() >= target.NextHurtSound then
