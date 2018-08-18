@@ -33,12 +33,13 @@ local chargeammo = 100
 local emindist = 300 -- Distance at which scale is 1
 local emaxdist = 1000 -- How far away from mindist scale reaches 0
 local eupdatedelay = 2 -- How often to run the distance check
-local eapproach = 0.5 -- How much the client interpolates last known to recently updated per second (smoothens)
+local eapproach = 0.75 -- How much the client interpolates last known to recently updated per second (smoothens)
 
 -- Related to whisper scale
 local wmindist = 300 -- Distance at which scale is 1
-local wmaxdist = 1000 -- How far away from mindist scale reaches 0
+local wmaxdist = 1200 -- How far away from mindist scale reaches 0
 local wupdatedelay = 1 -- How often to run the distance check
+local wfadetime = 1.5 -- How long it takes for the sound to fade to the new value
 
 local dollcleansesound = Sound("panicritual/doll_cleanse.wav")
 local dollchargesound = Sound("panicritual/doll_charged.wav")
@@ -557,7 +558,7 @@ if CLIENT then
 			local scale = self:GetWhisperScale()
 			if scale ~= lastwhisper then
 				if not self.WhisperSound:IsPlaying() then self.WhisperSound:Play() end
-				self.WhisperSound:ChangeVolume(scale, wupdatedelay)
+				self.WhisperSound:ChangeVolume(scale, wfadetime)
 				lastwhisper = scale
 			end
 		end
@@ -716,7 +717,7 @@ if CLIENT then
 	local peekmaxdist = 100
 	local peeksidedist = 20
 	local peekdist = 0.2 -- +20% extra (based on peekmaxdist)
-	local peeklerpspeed = 3
+	local peeklerpspeed = 4
 	local peekang = 70
 	local peekroll = 20	
 	function SWEP:CalcView(ply, pos, ang, fov)

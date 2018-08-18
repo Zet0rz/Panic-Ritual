@@ -540,7 +540,7 @@ GM:AddHint("demon_objective_humans", {
 	Position = HINT_BOTTOMBOX,
 })
 GM:AddHint("demon_ability_fade", {
-	Text = "Fade lasts for 0.5 seconds and gives you slightly higher movement speed. If you are inside a Human at the end of it, you will kill him. It has a cooldown and Stamina Stuns you after use.",
+	Text = "Fade lasts while you hold LMB up to 3 seconds and gives you slightly higher movement speed. If you are inside a Human when you let go of it, you will kill him. It has a cooldown and Stamina Stuns you after use. The stun is longer, the longer you held it.",
 	Icon = "panicritual/hud/demon_fade.png",
 	Header = "Fade Dash",
 	Position = HINT_BOTTOMBOX,

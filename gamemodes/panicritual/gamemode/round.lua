@@ -116,10 +116,20 @@ if SERVER then
 	end
 
 	local function StartMainPhase()
-		for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
-			local wep = v:GetActiveWeapon()
-			if IsValid(wep) and wep.Fade then wep:Fade(2) end
-			v:DrawShadow(true)
+		local e = EffectData()
+		e:SetRadius(60)
+		
+		for k,v in pairs(player.GetAll()) do
+			if v:IsDemon() then
+				v:CollideWhenPossible()
+				v:DrawShadow(true)
+
+				e:SetOrigin(v:GetPos() + Vector(0,0,40))
+				util.Effect("ritual_fadeout", e, true, true)
+
+				v:StaminaLock(5)
+			end
+			v:SetHealth(100)
 		end
 
 		for k,v in pairs(circles) do
@@ -274,7 +284,7 @@ if SERVER then
 	end]]
 
 	function GM:Ritual_CanChargeDoll(doll, wep, caller)
-		return (IsValid(doll.RitualCircle) and not doll.RitualCircle:GetCompleted()) and doll.RitualCircle:GetChargeable()
+		return (IsValid(doll.RitualCircle) and doll.RitualCircle:GetCompleted()) and doll.RitualCircle:GetChargeable()
 	end
 
 	function GM:Ritual_AllowChargeable(circle)

@@ -70,6 +70,17 @@ end]]
 local function staminamove(self, mv)
 	if IsFirstTimePredicted() then
 		local ply = self.Player
+		if GAMEMODE.RoundState == ROUND_PREPARE and ply:IsDemon() then
+			if ply.Ritual_Sprinting then
+				ply.Ritual_Stamina = 100
+				ply.Ritual_SprintTime = CurTime()
+				ply.Ritual_Sprinting = false
+				ply.Ritual_SprintForceEndTime = nil
+				if SERVER then ply:SetRunSpeed(self.RunSpeed) end
+				ply.Ritual_SprintRecovered = true
+			end
+			return
+		end
 		if mv:KeyPressed(IN_SPEED) then
 			ply.Ritual_Stamina = ply:GetStamina()
 			local ct = CurTime()
@@ -110,13 +121,13 @@ local demonwalkspeed = 200
 local demonrunspeed = 350
 local demonstaminaloss = 10
 local demonstaminarecover = 10
-local demonrecoverdelay = 5
+local demonrecoverdelay = 3
 
-local humanwalkspeed = 150
+local humanwalkspeed = 200
 local humanrunspeed = 400
 local humanstaminaloss = 10
 local humanstaminarecover = 10
-local humanrecoverdelay = 5
+local humanrecoverdelay = 3
 
 function META:GetStamina()
 	--self:GetRitualStamina()
@@ -148,7 +159,7 @@ if SERVER then
 		local ct = CurTime()
 		self.Ritual_StaminaLock = ct + time
 		self.Ritual_Stamina = self:GetStamina() - (reduction or 0)
-		self.Ritual_SprintTime = ct + (self:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
+		--self.Ritual_SprintTime = ct + (self:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
 		self.Ritual_Sprinting = false
 		self.Ritual_SprintForceEndTime = nil
 		self:SetRunSpeed(self:IsDemon() and demonwalkspeed or humanwalkspeed)
@@ -168,7 +179,7 @@ else
 		local ct = CurTime()
 
 		ply.Ritual_Stamina = stamina
-		ply.Ritual_SprintTime = ct + (ply:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
+		--ply.Ritual_SprintTime = ct + (ply:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
 		ply.Ritual_Sprinting = false
 		ply.Ritual_SprintForceEndTime = nil
 		ply.Ritual_SprintTime = ct + time

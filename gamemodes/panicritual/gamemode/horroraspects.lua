@@ -185,16 +185,23 @@ if CLIENT then
 	local mindist = 300
 	local maxdist = 600
 	local dotdist = 300
-	local checkdelay = 2
-	local minpitch = 80
-	local scalepitch = 20
+	local checkdelay = 1.5
+	local minpitch = 60
+	local scalepitch = 40
+	local fadetime = 2
+	local resetpitch = 0.05 -- The scale at which the pitch can lower itself (should be very near 0, if not exact 0)
 	hook.Add("Think", "Ritual_ShiverThink", function()
 		if CurTime() > nextcheck then
-			if LocalPlayer():IsHuman() and GAMEMODE.RoundState == ROUND_ONGOING then
+			local lp = LocalPlayer()
+			local ply = lp:GetObserverTarget()
+			if not IsValid(ply) or not ply:IsPlayer() then ply = lp end
+
+			print("Playing:", lp.ShiverSound:IsPlaying())
+			if ply:Alive() and ply:IsHuman() and GAMEMODE.RoundState == ROUND_ONGOING then
 				local bestscale = 0
 				for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
 					if v:Alive() then
-						local dir = LocalPlayer():GetPos() - v:GetPos() -- from demon to you
+						local dir = ply:GetPos() - v:GetPos() -- from demon to you
 						local dist = dir:Length()
 						local dot = dist - v:GetAimVector():Dot(dir:GetNormalized())*dotdist
 						local scale = math.Clamp(1 - (dot - mindist)/maxdist, 0, 1)
@@ -205,17 +212,23 @@ if CLIENT then
 					end
 				end
 
-				if not LocalPlayer().ShiverSound then
-					local s = CreateSound(LocalPlayer(), "panicritual/suspense_loop.wav")
-					s:PlayEx(bestscale, minpitch + bestscale*scalepitch)
-					LocalPlayer().ShiverSound = s
+				if not lp.ShiverSound then
+					local s = CreateSound(lp, "panicritual/suspense_loop.wav")
+					s:PlayEx(0, 0)
+					lp.ShiverSound:ChangeVolume(bestscale, fadetime)
+					lp.ShiverSound:ChangePitch(minpitch + bestscale*scalepitch, fadetime)
+					lp.ShiverSound = s
 				else
-					if not LocalPlayer().ShiverSound:IsPlaying() then LocalPlayer().ShiverSound:Play() end
-					LocalPlayer().ShiverSound:ChangeVolume(bestscale, checkdelay)
-					LocalPlayer().ShiverSound:ChangePitch(minpitch + bestscale*scalepitch, checkdelay)
+					if not lp.ShiverSound:IsPlaying() then lp.ShiverSound:Play() end
+					lp.ShiverSound:ChangeVolume(bestscale, fadetime)
+					local pitch = minpitch + bestscale*scalepitch
+					
+					if pitch > lp.ShiverSound:GetPitch() or lp.ShiverSound:GetVolume() <= resetpitch then
+						lp.ShiverSound:ChangePitch(pitch, fadetime)
+					end
 				end
-			elseif LocalPlayer().ShiverSound and LocalPlayer().ShiverSound:IsPlaying() then
-				LocalPlayer().ShiverSound:FadeOut(3)
+			elseif lp.ShiverSound and lp.ShiverSound:IsPlaying() then
+				lp.ShiverSound:ChangeVolume(0,3)
 			end
 			nextcheck = CurTime() + checkdelay
 		end

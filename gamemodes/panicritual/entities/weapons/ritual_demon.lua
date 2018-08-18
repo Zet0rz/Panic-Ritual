@@ -92,11 +92,12 @@ function SWEP:OnRemove()
 end
 
 -- Primary attack: Short-range fade
-local fadecooldown = 5
-local fadetime = 0.5
+local fadecooldown = 7
+local fademaxtime = 2
 local fadespeed = 500
-local fadekillradius = 50
-local fadestaminlock = 5
+local fadekillradius = 100
+local fademaxstaminlock = 5
+local fademinstaminlock = 2
 local breakables = {
 	["func_breakable"] = true,
 	["func_breakable_surf"] = true,
@@ -137,7 +138,7 @@ function SWEP:PrimaryAttack()
 		net.Send(self.Owner)
 	return end
 
-	self:Fade(fadetime)
+	self:Fade(fademaxtime)
 end
 
 -- Secondary attack: Long-range fade leap
@@ -178,10 +179,13 @@ if SERVER then
 					self.Owner:SetFading(false, radius)
 				end
 			end
-		elseif self.FadeTime and ct > self.FadeTime then
+		elseif self.FadeTime and (not self.Owner:KeyDown(IN_ATTACK) or ct > self.FadeTime) then
 			player_manager.RunClass(self.Owner, "ApplyMoveSpeeds")
 			self.Owner:SetFading(false, fadekillradius)
-			self.Owner:StaminaLock(fadestaminlock)
+
+			local timediff = 1 - (self.FadeTime - ct)/fademaxtime
+			self.Owner:StaminaLock(timediff*fademaxstaminlock + fademinstaminlock)
+
 			self.FadeTime = nil
 			self.NextFade = ct + fadecooldown
 
@@ -437,7 +441,7 @@ if SERVER then
 				for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
 					if v:Alive() then
 						local dist = v:GetPos():Distance(pos)
-						if dist <= killradius and (not GetConVar("ritual_kill_lineofsight"):GetBool() or v:VisibleTo(self)) then
+						if dist <= killradius and (not GetConVar("ritual_kill_lineofsight"):GetBool() or v:VisibleTo(self, nil, MASK_NPCWORLDSTATIC)) then
 							v:SoulTorment(self)
 						end
 					end

@@ -21,7 +21,7 @@ local bonestocheck = {
 	"ValveBiped.Bip01_Head1",
 	"ValveBiped.Bip01_Pelvis",
 }
-function PLAYER:VisibleTo(ply, c)
+function PLAYER:VisibleTo(ply, c, mask)
 	local epos = c and CLIENT and EyePos() or ply:EyePos()
 	for k,v in pairs(bonestocheck) do
 		local bid = self:LookupBone(v)
@@ -29,7 +29,7 @@ function PLAYER:VisibleTo(ply, c)
 			local tr = util.TraceLine({
 				start = epos,
 				endpos = self:GetBonePosition(bid),
-				mask = MASK_SHOT,
+				mask = mask or MASK_SHOT,
 				filter = ply,
 			})
 			if tr.Entity == self then return true, tr end
