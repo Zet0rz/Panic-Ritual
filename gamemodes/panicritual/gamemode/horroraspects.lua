@@ -196,7 +196,6 @@ if CLIENT then
 			local ply = lp:GetObserverTarget()
 			if not IsValid(ply) or not ply:IsPlayer() then ply = lp end
 
-			print("Playing:", lp.ShiverSound:IsPlaying())
 			if ply:Alive() and ply:IsHuman() and GAMEMODE.RoundState == ROUND_ONGOING then
 				local bestscale = 0
 				for k,v in pairs(team.GetPlayers(TEAM_DEMONS)) do
@@ -215,8 +214,8 @@ if CLIENT then
 				if not lp.ShiverSound then
 					local s = CreateSound(lp, "panicritual/suspense_loop.wav")
 					s:PlayEx(0, 0)
-					lp.ShiverSound:ChangeVolume(bestscale, fadetime)
-					lp.ShiverSound:ChangePitch(minpitch + bestscale*scalepitch, fadetime)
+					s:ChangeVolume(bestscale, fadetime)
+					s:ChangePitch(minpitch + bestscale*scalepitch, fadetime)
 					lp.ShiverSound = s
 				else
 					if not lp.ShiverSound:IsPlaying() then lp.ShiverSound:Play() end

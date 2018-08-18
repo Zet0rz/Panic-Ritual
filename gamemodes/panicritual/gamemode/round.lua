@@ -142,8 +142,8 @@ if SERVER then
 		GAMEMODE:SendHint("demon_roundstart", team.GetPlayers(TEAM_DEMONS))
 	end
 
-	local mins = Vector(-10,-10,1)
-	local maxs = Vector(10,10,1)
+	local mins = Vector(-48,-48,2)
+	local maxs = Vector(48,48,2)
 	local closestdist = 500
 	local function SpaceForCicle(pos, ang, ply)
 		-- Some logic to check if there's space for the circle, and if so, where to place it
@@ -407,7 +407,7 @@ if SERVER then
 
 	function GM:GetFallDamage(ply, speed)
 		if ply:IsDemon() then return 0 end
-		return speed/15
+		return speed/20
 	end
 
 	function GM:GetRitualCircles()

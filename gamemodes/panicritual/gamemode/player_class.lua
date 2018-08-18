@@ -76,6 +76,7 @@ local function staminamove(self, mv)
 				ply.Ritual_SprintTime = CurTime()
 				ply.Ritual_Sprinting = false
 				ply.Ritual_SprintForceEndTime = nil
+				ply.Ritual_SprintRecoverTime = nil
 				if SERVER then ply:SetRunSpeed(self.RunSpeed) end
 				ply.Ritual_SprintRecovered = true
 			end
@@ -93,12 +94,14 @@ local function staminamove(self, mv)
 		elseif mv:KeyReleased(IN_SPEED) and ply.Ritual_Sprinting then
 			ply.Ritual_Stamina = ply:GetStamina()
 			ply.Ritual_SprintTime = CurTime() + self.StaminaRecoverDelay
+			ply.Ritual_SprintRecoverTime = ply.Ritual_SprintTime
 			ply.Ritual_Sprinting = false
 			ply.Ritual_SprintForceEndTime = nil
 		elseif ply.Ritual_SprintForceEndTime then
 			local ct = CurTime()
 			if ct >= ply.Ritual_SprintForceEndTime then
 				ply.Ritual_SprintTime = ct + self.StaminaRecoverDelay
+				ply.Ritual_SprintRecoverTime = ply.Ritual_SprintTime
 				ply.Ritual_Sprinting = false
 				ply.Ritual_Stamina = 0
 				ply.Ritual_SprintForceEndTime = nil
@@ -106,11 +109,12 @@ local function staminamove(self, mv)
 					ply:SetRunSpeed(self.WalkSpeed)
 				end
 			end
-		elseif not ply.Ritual_Sprinting and not ply.Ritual_SprintRecovered and ply.Ritual_SprintTime then
+		elseif not ply.Ritual_Sprinting and not ply.Ritual_SprintRecovered and ply.Ritual_SprintRecoverTime then
 			local ct = CurTime()
-			if ct >= ply.Ritual_SprintTime and not mv:KeyDown(IN_SPEED) then
+			if ct >= ply.Ritual_SprintRecoverTime and not mv:KeyDown(IN_SPEED) then
 				if SERVER then ply:SetRunSpeed(self.RunSpeed) end
 				ply.Ritual_SprintRecovered = true
+				ply.Ritual_SprintRecoverTime = nil
 			end
 		end
 	end
@@ -121,10 +125,10 @@ local demonwalkspeed = 200
 local demonrunspeed = 350
 local demonstaminaloss = 10
 local demonstaminarecover = 10
-local demonrecoverdelay = 3
+local demonrecoverdelay = 5
 
 local humanwalkspeed = 200
-local humanrunspeed = 400
+local humanrunspeed = 500
 local humanstaminaloss = 10
 local humanstaminarecover = 10
 local humanrecoverdelay = 3
@@ -159,11 +163,11 @@ if SERVER then
 		local ct = CurTime()
 		self.Ritual_StaminaLock = ct + time
 		self.Ritual_Stamina = self:GetStamina() - (reduction or 0)
-		--self.Ritual_SprintTime = ct + (self:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
+		self.Ritual_SprintTime = ct + (self:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
 		self.Ritual_Sprinting = false
 		self.Ritual_SprintForceEndTime = nil
 		self:SetRunSpeed(self:IsDemon() and demonwalkspeed or humanwalkspeed)
-		self.Ritual_SprintTime = ct + time
+		self.Ritual_SprintRecoverTime = self.Ritual_Stamina > 0 and ct + time or self.Ritual_SprintTime
 		self.Ritual_SprintRecovered = false
 
 		net.Start("ritual_stamina_lock")
@@ -179,16 +183,17 @@ else
 		local ct = CurTime()
 
 		ply.Ritual_Stamina = stamina
-		--ply.Ritual_SprintTime = ct + (ply:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
+		ply.Ritual_SprintTime = ct + (ply:IsDemon() and demonrecoverdelay or humanrecoverdelay) + time
 		ply.Ritual_Sprinting = false
 		ply.Ritual_SprintForceEndTime = nil
-		ply.Ritual_SprintTime = ct + time
+		ply.Ritual_SprintRecoverTime = stamina > 0 and ct + time or ply.Ritual_SprintTime
 
 		ply.Ritual_SprintRecovered = false
 		ply.Ritual_StaminaLock = ct + time
 		ply.Ritual_StaminaLockTime = time
 	end)
 end
+function META:IsStaminaLocked() return self.Ritual_StaminaLock >= CurTime() end
 
 
 player_manager.RegisterClass( "player_ritual_base", PLAYER, "player_default" )

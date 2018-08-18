@@ -116,14 +116,14 @@ function SWEP:PrimaryAttack()
 			tr.Entity:Fire("Break")
 		end
 		self.Owner:ViewPunch(Angle(-3, 0, 0))
-		self:PlayActAndWait(ACT_VM_HITCENTER)
+		if SERVER then self:PlayActAndWait(ACT_VM_HITCENTER) end
 		return 
 	end
 	if CLIENT then return end
 	--if self.Leaping then return end
 
 	local ct = CurTime()
-	if self.FadeTime or (self.NextFade and ct < self.NextFade) then return end
+	if self.FadeTime or (self.NextFade and ct < self.NextFade) or (self.Owner.Ritual_StaminaLock and ct < self.Owner.Ritual_StaminaLock) then return end
 
 	--if self.CirclesToPlace then
 	if GAMEMODE.RoundState == ROUND_PREPARE then
@@ -148,6 +148,7 @@ local chargedleap = 300 -- +power for charging fully
 local maxchargetime = 1.5 -- Seconds of LMB to reach full charge leap
 local leapkillradius = 75 -- How big radius per second
 local maxleapkillradius = 300
+local leapstaminalock = 2
 if SERVER then
 	function SWEP:Fade(time)
 		self.Owner:SetFading(true)
@@ -177,6 +178,7 @@ if SERVER then
 				if not self.FadeTime then
 					local radius = math.Min((CurTime() - self.LeapTime)*leapkillradius, maxleapkillradius)
 					self.Owner:SetFading(false, radius)
+					self.Owner:StaminaLock(leapstaminalock)
 				end
 			end
 		elseif self.FadeTime and (not self.Owner:KeyDown(IN_ATTACK) or ct > self.FadeTime) then
@@ -211,7 +213,7 @@ if SERVER then
 end
 
 function SWEP:SecondaryAttack()
-	if SERVER and GAMEMODE.RoundState ~= ROUND_PREPARE and self.NextLeap and CurTime() > self.NextLeap then
+	if SERVER and GAMEMODE.RoundState ~= ROUND_PREPARE and self.NextLeap and CurTime() > self.NextLeap and (not self.Owner.Ritual_StaminaLock or CurTime() >= self.Owner.Ritual_StaminaLock) then
 		if self.FadeTime then
 			self:Leap(minleap + chargedleap)
 		else
@@ -441,7 +443,7 @@ if SERVER then
 				for k,v in pairs(team.GetPlayers(TEAM_HUMANS)) do
 					if v:Alive() then
 						local dist = v:GetPos():Distance(pos)
-						if dist <= killradius and (not GetConVar("ritual_kill_lineofsight"):GetBool() or v:VisibleTo(self, nil, MASK_NPCWORLDSTATIC)) then
+						if dist <= killradius and (not GetConVar("ritual_kill_lineofsight"):GetBool() or v:VisibleTo(self, nil)) then
 							v:SoulTorment(self)
 						end
 					end

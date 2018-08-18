@@ -81,6 +81,7 @@ function GM:PlayerCanHearPlayersVoice(listener, talker)
 	if not talker:Alive() then return not listener:Alive(), false end
 	
 	-- Everyone else can be heard by anyone, but in 3D
+	if lteam == TEAM_DEMONS then return talker:VisibleTo(listener), true end
 	return true, true
 end
 

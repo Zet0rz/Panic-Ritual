@@ -321,8 +321,8 @@ if SERVER then
 		if not IsValid(self.RitualCircle) then self:SetWhisperScale(0) return end
 
 		local bestdist = math.huge
-		for k,v in pairs(GAMEMODE.GetRitualCircles()) do
-			if v:AllowCleanse(self) then
+		for k,v in pairs(GAMEMODE:GetRitualCircles()) do
+			if IsValid(v) and v:AllowCleanse(self) then
 				local dist = self:GetPos():Distance(v:GetPos())
 				if dist < bestdist then bestdist = dist end
 			end

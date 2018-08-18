@@ -705,7 +705,7 @@ GM:AddHint("human_spectator_hint", {
 
 GM:AddHint("demon_circle_nospace", {
 	Header = "Not enough space",
-	Text = "There must be space for all candles and the doll.",
+	Text = "You must stand in an open and flat area.",
 	Position = HINT_CENTER,
 	Time = 3,
 	Fade = 1,
